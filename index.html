@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Pilot — AI Copilot for Founders</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --card-dark: rgba(20, 20, 25, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.15);
+            --violet: #8b5cf6;
+            --violet-glow: rgba(139, 92, 246, 0.15);
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Radial glow background */
+        .background-glow {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .glow-circle-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: float 20s infinite alternate ease-in-out;
+        }
+
+        .glow-circle-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, var(--violet-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: float 25s infinite alternate-reverse ease-in-out;
+        }
+
+        /* Animated Grid Overlay */
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center center;
+            pointer-events: none;
+            z-index: 2;
+            mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, #000 40%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, #000 40%, transparent 100%);
+        }
+
+        /* Container card */
+        .portal-card {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 540px;
+            background: var(--card-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 32px;
+            padding: 48px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transform: translateY(0);
+            animation: card-appear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Logo decoration */
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--primary), var(--violet));
+            border-radius: 22px;
+            margin-bottom: 32px;
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+            position: relative;
+            animation: pulse-logo 3s infinite alternate ease-in-out;
+        }
+
+        .logo-container::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 26px;
+            background: linear-gradient(135deg, var(--primary), var(--violet));
+            z-index: -1;
+            opacity: 0.5;
+            filter: blur(8px);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            fill: white;
+        }
+
+        /* Typography */
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            background: linear-gradient(to right, #ffffff, #d4d4d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Button & Actions */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(to right, var(--primary), var(--violet));
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.35);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .btn-primary:hover::after {
+            transform: translateX(100%);
+        }
+
+        /* Status tags grid */
+        .status-grid {
+            display: grid;
+            grid-template-cols: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: background 0.3s;
+        }
+
+        .status-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #10b981;
+            margin-right: 6px;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        /* Progress Bar redirect */
+        .redirect-wrapper {
+            margin-bottom: 28px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .redirect-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        .progress-bar-container {
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, var(--primary), var(--violet));
+            border-radius: 2px;
+            animation: fill-bar 3s linear forwards;
+        }
+
+        /* Keyframes Animations */
+        @keyframes float {
+            0% { transform: translateY(0px) scale(1); }
+            100% { transform: translateY(-30px) scale(1.1); }
+        }
+
+        @keyframes card-appear {
+            0% { opacity: 0; transform: translateY(30px); filter: blur(5px); }
+            100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        @keyframes pulse-logo {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.05) rotate(3deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes fill-bar {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .portal-card {
+                padding: 32px 24px;
+            }
+            h1 {
+                font-size: 28px;
+            }
+            p.subtitle {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-glow">
+        <div class="glow-circle-1"></div>
+        <div class="glow-circle-2"></div>
+    </div>
+    
+    <div class="grid-overlay"></div>
+
+    <div class="portal-card">
+        <!-- Logo -->
+        <div class="logo-container">
+            <svg class="logo-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 22h20L12 2zm0 3.99L18.8 19H5.2L12 5.99zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+            </svg>
+        </div>
+
+        <!-- Heading -->
+        <h1>Start Pilot</h1>
+        <p class="subtitle">Your AI-powered startup copilot. Launch, validate, and scale your venture at light speed.</p>
+
+        <!-- Redirect Status -->
+        <div class="redirect-wrapper">
+            <span class="redirect-text" id="redirect-status">Launching application...</span>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <!-- Button -->
+        <a href="./frontend/src/app/page.tsx" class="btn-primary" id="launch-btn">
+            Enter Dashboard Directly
+        </a>
+
+        <!-- Status Grid -->
+        <div class="status-grid">
+            <div class="status-card">
+                <span class="status-dot"></span>Core Engine
+            </div>
+            <div class="status-card">
+                <span class="status-dot"></span>AI Copilot
+            </div>
+            <div class="status-card">
+                <span class="status-dot"></span>Next.js V16
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Automatic redirection to /frontend/src/app/page.tsx on local, or /frontend in Vercel
+        // We will detect if it is running on vercel or locally.
+        // On Vercel, if root folder is set correctly, it won't hit this index.html anyway.
+        // But if they are accessing the root directly, we redirect to /frontend/
+        const targetUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? '/frontend'
+            : '/frontend';
+
+        // Set the button link to point to frontend folder correctly
+        document.getElementById('launch-btn').setAttribute('href', targetUrl);
+
+        let count = 3;
+        const statusEl = document.getElementById('redirect-status');
+        
+        const countdown = setInterval(() => {
+            count--;
+            if (count > 0) {
+                statusEl.innerText = `Redirecting in ${count}s...`;
+            } else {
+                statusEl.innerText = `Redirecting now...`;
+                clearInterval(countdown);
+                window.location.href = targetUrl;
+            }
+        }, 1000);
+        
+        // Timeout redirect fallback
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 3000);
+    </script>
+</body>
+</html>
