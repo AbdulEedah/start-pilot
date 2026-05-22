@@ -358,15 +358,11 @@
     </div>
 
     <script>
-        // Automatic redirection to /frontend/src/app/page.tsx on local, or /frontend in Vercel
-        // We will detect if it is running on vercel or locally.
-        // On Vercel, if root folder is set correctly, it won't hit this index.html anyway.
-        // But if they are accessing the root directly, we redirect to /frontend/
-        const targetUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? '/frontend'
-            : '/frontend';
+        // Redirect directly to your active Next.js development server
+        // since the web app runs on port 3000, not a folder path.
+        const targetUrl = 'http://localhost:3000';
 
-        // Set the button link to point to frontend folder correctly
+        // Set the button link to point to the active Next.js server
         document.getElementById('launch-btn').setAttribute('href', targetUrl);
 
         let count = 3;
@@ -375,9 +371,9 @@
         const countdown = setInterval(() => {
             count--;
             if (count > 0) {
-                statusEl.innerText = `Redirecting in ${count}s...`;
+                statusEl.innerText = `Redirecting to server in ${count}s...`;
             } else {
-                statusEl.innerText = `Redirecting now...`;
+                statusEl.innerText = `Connecting now...`;
                 clearInterval(countdown);
                 window.location.href = targetUrl;
             }
