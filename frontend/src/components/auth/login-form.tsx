@@ -23,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 const loginSchema = z.object({
   identifier: z.string().min(1, "Email or Phone Number is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  rememberMe: z.boolean().default(false),
+  rememberMe: z.boolean(),
 })
 
 export function LoginForm() {
