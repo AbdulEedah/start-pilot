@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { offlineAuth } from "@/lib/offline-auth"
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -36,14 +37,21 @@ export default function ForgotPasswordPage() {
 
   async function onSubmit(values: z.infer<typeof forgotPasswordSchema>) {
     setIsLoading(true)
-    // Mock reset request
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsLoading(false)
-    setIsSuccess(true)
     
-    toast.success("Reset link sent!", {
-      description: `If an account exists for ${values.email}, you will receive a reset link shortly.`,
-    })
+    try {
+      await offlineAuth.forgotPassword(values.email)
+      setIsSuccess(true)
+      
+      toast.success("Reset link sent!", {
+        description: `If an account exists for ${values.email}, you will receive a reset link shortly.`,
+      })
+    } catch (error) {
+      toast.error("Failed to send reset email", {
+        description: "Please try again later",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

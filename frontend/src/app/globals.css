@@ -140,3 +140,46 @@
     @apply font-heading tracking-tight;
   }
 }@layer utilities { .glass-card { @apply bg-card/50 backdrop-blur-md border border-border/50 shadow-xl; } } .page-enter { opacity: 0; transform: translateY(10px); } .page-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; } .page-exit { opacity: 1; transform: translateY(0); } .page-exit-active { opacity: 0; transform: translateY(-10px); transition: opacity 300ms, transform 300ms; }
+
+/* Splash Screen Rocket Animations */
+@keyframes rocket-shake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-0.5px, -0.5px) rotate(-0.1deg); }
+  20% { transform: translate(-1px, 0px) rotate(0.1deg); }
+  30% { transform: translate(0px, 0.5px) rotate(0deg); }
+  40% { transform: translate(0.5px, -0.5px) rotate(0.1deg); }
+  50% { transform: translate(-0.5px, 0.5px) rotate(-0.1deg); }
+  60% { transform: translate(-1px, 0.5px) rotate(0deg); }
+  70% { transform: translate(0.5px, 0.5px) rotate(0.1deg); }
+  80% { transform: translate(-0.5px, -0.5px) rotate(-0.1deg); }
+  90% { transform: translate(0.5px, 0.5px) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes flame-pulse {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.85; filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.7)); }
+  50% { transform: scaleY(1.3) scaleX(0.95); opacity: 1; filter: drop-shadow(0 0 25px rgba(244, 63, 94, 0.9)) drop-shadow(0 0 10px rgba(139, 92, 246, 0.8)); }
+}
+
+@keyframes spark-float {
+  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-120px) scale(0) rotate(90deg); opacity: 0; }
+}
+
+@keyframes plasma-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.15); }
+}
+
+.animate-rocket-shake {
+  animation: rocket-shake 0.05s infinite;
+}
+
+.animate-flame-pulse {
+  animation: flame-pulse 0.07s infinite alternate ease-in-out;
+}
+
+.animate-plasma-pulse {
+  animation: plasma-pulse 2s infinite ease-in-out;
+}
+

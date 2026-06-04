@@ -14,11 +14,18 @@ import {
   Play,
   Lightbulb,
   CheckCircle2,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  FileText,
+  Loader2,
+  WifiOff
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { offlineAI } from "@/lib/offline-ai"
+import { offlineStorage, PitchAnalysis } from "@/lib/offline-storage"
 
 const PITCH_TYPES = [
   {
@@ -119,11 +126,14 @@ const PITCH_TYPES = [
 ]
 
 export default function PitchPage() {
-  const [mode, setMode] = useState<"hub" | "guidelines" | "simulation">("hub")
+  const [mode, setMode] = useState<"hub" | "guidelines" | "simulation" | "analyzer">("hub")
   const [activeType, setActiveType] = useState(PITCH_TYPES[0])
   const [currentStep, setCurrentStep] = useState(0)
   const [score, setScore] = useState(0)
   const [simStep, setSimStep] = useState(0)
+  const [pitchContent, setPitchContent] = useState("")
+  const [analysis, setAnalysis] = useState<PitchAnalysis | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const handleSimAnswer = () => {
     const points = Math.floor(Math.random() * 20) + 10
@@ -136,6 +146,199 @@ export default function PitchPage() {
       })
       setMode("hub")
     }
+  }
+
+  const analyzePitch = async () => {
+    if (!pitchContent.trim()) {
+      toast.error("Please enter your pitch content first")
+      return
+    }
+
+    setIsAnalyzing(true)
+    
+    try {
+      const pitchAnalysis = await offlineAI.analyzePitch(pitchContent)
+      
+      // Save analysis
+      await offlineStorage.save('pitchAnalyses', pitchAnalysis)
+      setAnalysis(pitchAnalysis)
+      
+      toast.success("Pitch analyzed!", {
+        description: `Overall score: ${pitchAnalysis.scores.overall}/100`
+      })
+    } catch (error) {
+      console.error('Failed to analyze pitch:', error)
+      toast.error("Failed to analyze pitch", {
+        description: "Please try again"
+      })
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  if (mode === "analyzer") {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-6 border-b flex items-center justify-between">
+          <Button variant="ghost" onClick={() => setMode("hub")} className="rounded-full">
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Hub
+          </Button>
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-orange-500" />
+            <h2 className="font-bold text-xl">AI Pitch Analyzer</h2>
+          </div>
+          <div className="w-[100px]" />
+        </div>
+
+        <div className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {!analysis ? (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold font-heading">Analyze Your Pitch</h1>
+                  <p className="text-muted-foreground">
+                    Paste your pitch deck content or script below for AI-powered analysis and feedback.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Paste your pitch content here... Include your problem statement, solution, market size, business model, traction, team, and funding ask."
+                    value={pitchContent}
+                    onChange={(e) => setPitchContent(e.target.value)}
+                    className="min-h-[300px] text-base"
+                  />
+                  
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={analyzePitch}
+                      disabled={isAnalyzing || !pitchContent.trim()}
+                      className="rounded-full"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Analyze Pitch
+                        </>
+                      )}
+                    </Button>
+                    
+                    <Button variant="outline" className="rounded-full">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Deck
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold font-heading">Pitch Analysis Results</h1>
+                    <p className="text-muted-foreground">AI-powered feedback on your pitch</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setAnalysis(null)
+                      setPitchContent("")
+                    }}
+                    className="rounded-full"
+                  >
+                    New Analysis
+                  </Button>
+                </div>
+
+                {/* Overall Score */}
+                <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold">Overall Score</h3>
+                    <div className="text-3xl font-bold text-primary">
+                      {analysis.scores.overall}/100
+                    </div>
+                  </div>
+                  <Progress value={analysis.scores.overall} className="h-3" />
+                </div>
+
+                {/* Detailed Scores */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(analysis.scores).filter(([key]) => key !== 'overall').map(([key, score]) => (
+                    <div key={key} className="p-4 rounded-xl bg-card border border-border/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
+                        <span className="font-bold text-primary">{score}/100</span>
+                      </div>
+                      <Progress value={score} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Feedback Sections */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+                    <h3 className="font-bold text-emerald-600 mb-4 flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Strengths
+                    </h3>
+                    <ul className="space-y-2">
+                      {analysis.feedback.strengths.map((strength, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">
+                          • {strength}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20">
+                    <h3 className="font-bold text-amber-600 mb-4 flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5" />
+                      Areas to Improve
+                    </h3>
+                    <ul className="space-y-2">
+                      {analysis.feedback.weaknesses.map((weakness, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">
+                          • {weakness}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-6 rounded-2xl bg-blue-500/5 border border-blue-500/20">
+                    <h3 className="font-bold text-blue-600 mb-4 flex items-center gap-2">
+                      <Lightbulb className="w-5 h-5" />
+                      Suggestions
+                    </h3>
+                    <ul className="space-y-2">
+                      {analysis.feedback.suggestions.map((suggestion, i) => (
+                        <li key={i} className="text-sm text-muted-foreground">
+                          • {suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <Button className="rounded-full">
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Report
+                  </Button>
+                  <Button variant="outline" className="rounded-full">
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Detailed Analysis
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (mode === "guidelines") {
@@ -279,7 +482,10 @@ export default function PitchPage() {
   return (
     <div className="p-8 space-y-12 overflow-y-auto">
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold font-heading tracking-tight">The Art of the Pitch</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-4xl font-bold font-heading tracking-tight">The Art of the Pitch</h1>
+          <WifiOff className="w-6 h-6 text-orange-500" />
+        </div>
         <p className="text-xl text-muted-foreground">Master your story with industry-standard guidelines and AI-driven practice.</p>
       </div>
 
@@ -332,25 +538,45 @@ export default function PitchPage() {
           </Button>
         </motion.div>
 
-        <div className="p-10 rounded-[48px] bg-accent/30 border border-border/50 flex flex-col justify-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-xs font-bold uppercase tracking-widest w-fit">
-            <Trophy className="w-4 h-4" /> SUCCESS STORY
+        <motion.div 
+          whileHover={{ scale: 1.02 }}
+          className="p-10 rounded-[48px] bg-gradient-to-br from-primary/10 to-violet-500/10 border border-primary/20 space-y-8 shadow-xl relative overflow-hidden group cursor-pointer"
+          onClick={() => setMode("analyzer")}
+        >
+          <div className="absolute top-[-20%] right-[-10%] w-[40%] h-[140%] bg-violet-500/20 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-700" />
+          <div className="w-16 h-16 bg-primary/20 rounded-[24px] flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold font-heading leading-tight italic">
-            "The investor guidelines helped me structure my thoughts, but the simulator is what gave me the confidence to close our $2M seed round."
-          </h2>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20">
-              <img 
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" 
-                alt="Sarah Jenkins" 
-                className="w-full h-full bg-white"
-              />
-            </div>
-            <div>
-              <p className="font-bold">Sarah Jenkins</p>
-              <p className="text-sm text-muted-foreground">Founder of EcoFlow</p>
-            </div>
+          <div className="space-y-4 relative z-10">
+            <h2 className="text-4xl font-bold font-heading">AI Pitch Analyzer</h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Get detailed feedback on your pitch deck with AI-powered analysis. Identify strengths, weaknesses, and areas for improvement.
+            </p>
+          </div>
+          <Button className="w-full h-14 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-lg">
+            Analyze My Pitch
+          </Button>
+        </motion.div>
+      </div>
+
+      <div className="p-10 rounded-[48px] bg-accent/30 border border-border/50 flex flex-col justify-center space-y-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-xs font-bold uppercase tracking-widest w-fit">
+          <Trophy className="w-4 h-4" /> SUCCESS STORY
+        </div>
+        <h2 className="text-2xl font-bold font-heading leading-tight italic">
+          "The investor guidelines helped me structure my thoughts, but the simulator is what gave me the confidence to close our $2M seed round."
+        </h2>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20">
+            <img 
+              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" 
+              alt="Sarah Jenkins" 
+              className="w-full h-full bg-white"
+            />
+          </div>
+          <div>
+            <p className="font-bold">Sarah Jenkins</p>
+            <p className="text-sm text-muted-foreground">Founder of EcoFlow</p>
           </div>
         </div>
       </div>

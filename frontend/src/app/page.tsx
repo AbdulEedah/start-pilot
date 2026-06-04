@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { 
@@ -20,112 +20,151 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { EntryDialog } from "@/components/onboarding/entry-dialog"
 import { Separator } from "@/components/ui/separator"
+import { SplashScreen } from "@/components/splash-screen"
 
 export default function Home() {
+  const [showSplash, setShowSplash] = useState(true)
   const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false)
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
-      </div>
+    <>
+      <AnimatePresence mode="wait">
+        {showSplash && (
+          <SplashScreen onComplete={() => setShowSplash(false)} />
+        )}
+      </AnimatePresence>
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md border-border/40">
-        <div className="flex items-center justify-between px-6 py-4 mx-auto max-w-7xl">
-          <div className="flex items-center gap-2 group">
-            <div className="flex items-center justify-center w-9 h-9 transition-transform bg-primary rounded-xl group-hover:rotate-12 shadow-lg shadow-primary/20">
-              <Rocket className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold tracking-tight font-heading">
-              Start Pilot
-            </span>
-          </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-            <Link href="#features" className="hover:text-primary transition-colors">Features</Link>
-            <Link href="#sectors" className="hover:text-primary transition-colors">Sectors</Link>
-            <Link href="#mentorship" className="hover:text-primary transition-colors">Mentorship</Link>
-            <Link href="#testimonials" className="hover:text-primary transition-colors">Success Stories</Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <Link href="/dashboard" className="hidden sm:inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors">
-              Sign In
-            </Link>
-            <Button className="rounded-full" onClick={() => setIsEntryDialogOpen(true)}>
-              Get Started
-            </Button>
-          </div>
+      <div className="relative min-h-screen overflow-x-hidden bg-background">
+        {/* Background Decorative Elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <main className="flex flex-col items-center justify-center px-6 pt-24 pb-32 mx-auto text-center max-w-7xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-3 py-1 mb-8 border rounded-full bg-accent/50 border-primary/20 backdrop-blur-sm"
-        >
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-[10px] font-bold tracking-widest uppercase">
-            The AI Copilot for Early-Stage Founders
-          </span>
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="max-w-4xl mb-6 text-6xl font-bold tracking-tight sm:text-8xl font-heading"
-        >
-          Build your startup at{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-violet-400 to-indigo-400">
-            light speed.
-          </span>
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="max-w-2xl mb-12 text-xl leading-relaxed text-muted-foreground"
-        >
-          The only platform that turns raw ideas into validated, 
-          investor-ready ventures using advanced AI guidance.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex flex-col items-center w-full gap-4 sm:flex-row sm:justify-center"
-        >
-          <Button size="lg" className="h-14 px-10 rounded-full text-lg group shadow-xl shadow-primary/25" onClick={() => setIsEntryDialogOpen(true)}>
-            Start Building Now
-            <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
-          </Button>
-          <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg backdrop-blur-sm">
-            Watch Demo
-          </Button>
-        </motion.div>
-
-        {/* Hero Illustration Placeholder */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.4 }}
-          className="relative w-full max-w-5xl mt-24 aspect-[2/1] rounded-[40px] overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-b from-accent/50 to-background/50"
-        >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4 text-muted-foreground/40">
-              <Cpu className="w-16 h-16 animate-pulse" />
-              <span className="text-sm font-medium">Interactive AI Dashboard Preview</span>
+        {/* Header */}
+        <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md border-border/40">
+          <div className="flex items-center justify-between px-6 py-4 mx-auto max-w-7xl">
+            <div className="flex items-center gap-2 group">
+              <div className="relative w-9 h-9 flex items-center justify-center">
+                {/* Empty reservation shell, layoutId takes this over seamlessly once splash is completed */}
+                {!showSplash && (
+                  <motion.div
+                    layoutId="main-rocket"
+                    transition={{
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 18
+                    }}
+                    className="flex items-center justify-center w-9 h-9 bg-primary rounded-xl group-hover:rotate-12 shadow-lg shadow-primary/20 cursor-pointer"
+                  >
+                    <Rocket className="w-5 h-5 text-primary-foreground transform -rotate-45" />
+                  </motion.div>
+                )}
+              </div>
+              <motion.span 
+                initial={{ opacity: 0, x: -10 }}
+                animate={!showSplash ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
+                transition={{ delay: 0.15, duration: 0.4 }}
+                className="text-xl font-bold tracking-tight font-heading"
+              >
+                Start Pilot
+              </motion.span>
             </div>
+            <motion.nav 
+              initial={{ opacity: 0, y: -5 }}
+              animate={!showSplash ? { opacity: 1, y: 0 } : { opacity: 0, y: -5 }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground"
+            >
+              <Link href="#features" className="hover:text-primary transition-colors">Features</Link>
+              <Link href="#sectors" className="hover:text-primary transition-colors">Sectors</Link>
+              <Link href="#mentorship" className="hover:text-primary transition-colors">Mentorship</Link>
+              <Link href="#testimonials" className="hover:text-primary transition-colors">Success Stories</Link>
+            </motion.nav>
+            <motion.div 
+              initial={{ opacity: 0, x: 10 }}
+              animate={!showSplash ? { opacity: 1, x: 0 } : { opacity: 0, x: 10 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              className="flex items-center gap-3"
+            >
+              <ThemeToggle />
+              <Link href="/dashboard" className="hidden sm:inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors">
+                Sign In
+              </Link>
+              <Button className="rounded-full" onClick={() => setIsEntryDialogOpen(true)}>
+                Get Started
+              </Button>
+            </motion.div>
           </div>
-        </motion.div>
-      </main>
+        </header>
+
+        {/* Hero Section */}
+        <main className="flex flex-col items-center justify-center px-6 pt-24 pb-32 mx-auto text-center max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={!showSplash ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2 px-3 py-1 mb-8 border rounded-full bg-accent/50 border-primary/20 backdrop-blur-sm"
+          >
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-[10px] font-bold tracking-widest uppercase">
+              The AI Copilot for Early-Stage Founders
+            </span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={!showSplash ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ delay: 0.3 }}
+            className="max-w-4xl mb-6 text-6xl font-bold tracking-tight sm:text-8xl font-heading"
+          >
+            Build your startup at{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-violet-400 to-indigo-400">
+              light speed.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={!showSplash ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ delay: 0.4 }}
+            className="max-w-2xl mb-12 text-xl leading-relaxed text-muted-foreground"
+          >
+            The only platform that turns raw ideas into validated, 
+            investor-ready ventures using advanced AI guidance.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={!showSplash ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-col items-center w-full gap-4 sm:flex-row sm:justify-center"
+          >
+            <Button size="lg" className="h-14 px-10 rounded-full text-lg group shadow-xl shadow-primary/25" onClick={() => setIsEntryDialogOpen(true)}>
+              Start Building Now
+              <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
+            </Button>
+            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg backdrop-blur-sm">
+              Watch Demo
+            </Button>
+          </motion.div>
+
+          {/* Hero Illustration Placeholder */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={!showSplash ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="relative w-full max-w-5xl mt-24 aspect-[2/1] rounded-[40px] overflow-hidden border border-border/50 shadow-2xl bg-gradient-to-b from-accent/50 to-background/50"
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4 text-muted-foreground/40">
+                <Cpu className="w-16 h-16 animate-pulse" />
+                <span className="text-sm font-medium">Interactive AI Dashboard Preview</span>
+              </div>
+            </div>
+          </motion.div>
+        </main>
+
 
       {/* Features Section */}
       <section id="features" className="py-24 bg-accent/30 border-y border-border/50">
@@ -345,6 +384,8 @@ export default function Home() {
       </footer>
 
       <EntryDialog isOpen={isEntryDialogOpen} onOpenChange={setIsEntryDialogOpen} />
-    </div>
+      </div>
+    </>
   )
 }
+

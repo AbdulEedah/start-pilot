@@ -3,17 +3,21 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
+import { useOffline } from "@/components/offline-provider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated } = useOffline();
 
   useEffect(() => {
-    router.replace("/dashboard");
-  }, [router]);
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
-  return (
-    <div className="opacity-0 pointer-events-none">
-      <AuthForm initialTab="login" />
-    </div>
-  );
+  if (isAuthenticated) {
+    return null;
+  }
+
+  return <AuthForm initialTab="login" />;
 }

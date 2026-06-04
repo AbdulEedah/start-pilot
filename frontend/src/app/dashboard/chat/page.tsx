@@ -2,31 +2,34 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, Bot, User, Sparkles, Loader2, ChevronRight } from "lucide-react"
+import { Send, Bot, User, Sparkles, Loader2, ChevronRight, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { offlineAI } from "@/lib/offline-ai"
+import { offlineStorage, ChatMessage, ChatSession } from "@/lib/offline-storage"
+import { useOffline } from "@/components/offline-provider"
+import { toast } from "sonner"
 
-interface Message {
-  id: string
-  role: "ai" | "user"
-  content: string
-  timestamp: Date
-}
-
-const INITIAL_MESSAGES: Message[] = [
+const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: "1",
-    role: "ai",
-    content: "Hello! I'm your Start Pilot AI Copilot. I've seen your background and your interest in this sector. Let's start by diving into the problem you're solving. What exactly inspired this idea?",
-    timestamp: new Date(),
+    role: "assistant",
+    content: "Hello! I'm your Start Pilot AI Copilot. I'm running completely offline to ensure your startup ideas stay private and secure. Let's start by diving into the problem you're solving. What exactly inspired this idea?",
+    timestamp: new Date().toISOString(),
+    metadata: {
+      type: 'general',
+      confidence: 0.95
+    }
   },
 ]
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES)
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
+  const { user } = useOffline()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -39,44 +42,136 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  useEffect(() => {
+    // Load or create chat session
+    loadChatSession()
+  }, [])
+
+  const loadChatSession = async () => {
+    try {
+      const sessions = await offlineStorage.getAll<ChatSession>('chatSessions')
+      let session = sessions.find(s => s.type === 'general')
+      
+      if (!session) {
+        // Create new session
+        session = {
+          id: generateId(),
+          title: 'AI Copilot Chat',
+          messages: INITIAL_MESSAGES,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: 'general'
+        }
+        await offlineStorage.save('chatSessions', session)
+      }
+      
+      setCurrentSession(session)
+      setMessages(session.messages)
+    } catch (error) {
+      console.error('Failed to load chat session:', error)
+    }
+  }
+
+  const saveSession = async (updatedMessages: ChatMessage[]) => {
+    if (!currentSession) return
+
+    const updatedSession: ChatSession = {
+      ...currentSession,
+      messages: updatedMessages,
+      updatedAt: new Date().toISOString()
+    }
+
+    try {
+      await offlineStorage.save('chatSessions', updatedSession)
+      setCurrentSession(updatedSession)
+    } catch (error) {
+      console.error('Failed to save chat session:', error)
+    }
+  }
+
+  const generateId = () => Math.random().toString(36).substr(2, 9)
+
   const handleSend = async () => {
     if (!input.trim() || isTyping) return
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    const userMessage: ChatMessage = {
+      id: generateId(),
       role: "user",
       content: input,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
     setInput("")
     setIsTyping(true)
 
-    // Mock AI Response with streaming effect
-    setTimeout(() => {
-      const aiId = (Date.now() + 1).toString()
-      const aiResponse = generateMockResponse(input, messages.length)
+    try {
+      // Get AI response
+      const aiResponse = await offlineAI.getChatResponse(input, { messages: updatedMessages })
       
-      let currentText = ""
-      const words = aiResponse.split(" ")
-      
-      setMessages((prev) => [...prev, { id: aiId, role: "ai", content: "", timestamp: new Date() }])
-      
-      let wordIndex = 0
-      const interval = setInterval(() => {
-        if (wordIndex < words.length) {
-          currentText += (wordIndex === 0 ? "" : " ") + words[wordIndex]
-          setMessages((prev) => 
-            prev.map((msg) => msg.id === aiId ? { ...msg, content: currentText } : msg)
-          )
-          wordIndex++
-        } else {
-          clearInterval(interval)
-          setIsTyping(false)
+      const aiMessage: ChatMessage = {
+        id: generateId(),
+        role: "assistant",
+        content: aiResponse.content,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          type: 'general',
+          confidence: aiResponse.confidence,
+          sources: aiResponse.sources
         }
-      }, 50)
-    }, 1000)
+      }
+
+      const finalMessages = [...updatedMessages, aiMessage]
+      setMessages(finalMessages)
+      await saveSession(finalMessages)
+      
+    } catch (error) {
+      console.error('Failed to get AI response:', error)
+      toast.error("Failed to get AI response", {
+        description: "Please try again"
+      })
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
+  const handleAnalyzeViability = async () => {
+    if (isTyping) return
+
+    setIsTyping(true)
+    
+    try {
+      const context = messages.slice(-5).map(m => m.content).join('\n')
+      const response = await offlineAI.getChatResponse(
+        "Please analyze the viability of my startup idea based on our conversation so far.",
+        { messages, type: 'validation' }
+      )
+
+      const aiMessage: ChatMessage = {
+        id: generateId(),
+        role: "assistant",
+        content: response.content,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          type: 'validation',
+          confidence: response.confidence,
+          sources: response.sources
+        }
+      }
+
+      const updatedMessages = [...messages, aiMessage]
+      setMessages(updatedMessages)
+      await saveSession(updatedMessages)
+      
+    } catch (error) {
+      console.error('Failed to analyze viability:', error)
+      toast.error("Failed to analyze viability", {
+        description: "Please try again"
+      })
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   return (
@@ -90,13 +185,19 @@ export default function ChatPage() {
           <div>
             <h2 className="font-bold font-heading leading-none">Startup Copilot</h2>
             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              Online & Analyzing
+              <WifiOff className="w-3 h-3 text-orange-500" />
+              Offline Mode - Private & Secure
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="rounded-full gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="rounded-full gap-2"
+            onClick={handleAnalyzeViability}
+            disabled={isTyping}
+          >
             <Sparkles className="w-3.5 h-3.5 text-primary" />
             Analyze Viability
           </Button>
@@ -129,8 +230,13 @@ export default function ChatPage() {
                     : "bg-card border border-border/50 rounded-tl-none"
                 }`}>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  {message.metadata?.confidence && (
+                    <div className="mt-2 text-xs opacity-60">
+                      Confidence: {Math.round(message.metadata.confidence * 100)}%
+                    </div>
+                  )}
                   <span className="text-[10px] opacity-50 mt-2 block">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               </div>
@@ -171,25 +277,13 @@ export default function ChatPage() {
             onClick={handleSend}
             disabled={!input.trim() || isTyping}
           >
-            <Send className="w-5 h-5" />
+            {isTyping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </Button>
         </div>
         <p className="text-[10px] text-center text-muted-foreground mt-4 uppercase tracking-widest font-bold">
-          AI-Powered Startup Guidance — 5 Credits Remaining
+          Offline AI-Powered Startup Guidance — Unlimited Usage
         </p>
       </div>
     </div>
   )
-}
-
-function generateMockResponse(userInput: string, messageCount: number): string {
-  const responses = [
-    "That's a powerful insight. Given the current market trends, how do you see this problem evolving over the next 2-3 years? Who is feeling this pain the most right now?",
-    "Interesting. Many founders overlook the operational complexity here. Have you considered how you'll handle the logistics of the initial pilot? What's your 'Stage 0' move?",
-    "I've analyzed similar models in this sector. The biggest risk is usually customer acquisition cost. How do you plan to reach your first 10 paying customers without a large marketing budget?",
-    "Based on our conversation, I'm detecting a strong value proposition. However, the 'existing experience' you mentioned could be leveraged more. How can we integrate your specific skills into the core product?",
-    "Great. Let's talk about validation. If I gave you a small budget to test this today, what's the one metric you'd track to prove people actually want this?",
-  ]
-  
-  return responses[Math.floor(Math.random() * responses.length)]
 }

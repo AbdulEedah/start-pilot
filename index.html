@@ -146,7 +146,9 @@
             letter-spacing: -0.5px;
             margin-bottom: 12px;
             background: linear-gradient(to right, #ffffff, #d4d4d8);
+            background-clip: text;
             -webkit-background-clip: text;
+            color: transparent;
             -webkit-text-fill-color: transparent;
         }
 
@@ -208,7 +210,7 @@
         /* Status tags grid */
         .status-grid {
             display: grid;
-            grid-template-cols: repeat(3, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 12px;
             margin-top: 16px;
         }
@@ -359,8 +361,8 @@
 
     <script>
         // Redirect directly to your active Next.js development server
-        // since the web app runs on port 3000, not a folder path.
-        const targetUrl = 'http://localhost:3000';
+        // since the web app runs on port 3001, not a folder path.
+        const targetUrl = 'http://localhost:3001';
 
         // Set the button link to point to the active Next.js server
         document.getElementById('launch-btn').setAttribute('href', targetUrl);

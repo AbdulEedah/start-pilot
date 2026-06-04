@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { OfflineProvider } from "@/components/offline-provider";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -30,15 +31,17 @@ export default function RootLayout({
         className={`${outfit.variable} ${inter.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster position="top-right" />
-        </ThemeProvider>
+        <OfflineProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster position="top-right" />
+          </ThemeProvider>
+        </OfflineProvider>
       </body>
     </html>
   );

@@ -1,9 +1,13 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Rocket, MessageSquare, LayoutDashboard, Settings, LogOut, Sparkles, Cpu, Presentation, TrendingUp, Target, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useOffline } from "@/components/offline-provider"
+import { Button } from "@/components/ui/button"
 
 export default function DashboardLayout({
   children,
@@ -11,6 +15,24 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const { isAuthenticated, user, logout } = useOffline()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/login")
+    }
+  }, [isAuthenticated, router])
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/")
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
@@ -104,12 +126,26 @@ export default function DashboardLayout({
         <div className="p-4 border-t space-y-4">
           <div className="flex items-center justify-between px-2">
             <ThemeToggle />
-            <Link href="/" className="p-2 text-muted-foreground hover:text-destructive transition-colors">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+            >
               <LogOut className="w-4 h-4" />
-            </Link>
+            </Button>
           </div>
+          
+          {/* User Info */}
+          <div className="px-2">
+            <p className="text-xs font-medium text-foreground">{user?.name}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+          </div>
+
           <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-            <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Free Plan</p>
+            <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">
+              {user?.subscription === 'free' ? 'Free Plan' : 'Pro Plan'}
+            </p>
             <p className="text-xs text-muted-foreground mb-3">3/5 ideas validated</p>
             <div className="w-full h-1 bg-accent rounded-full overflow-hidden">
               <div className="h-full bg-primary w-3/5" />

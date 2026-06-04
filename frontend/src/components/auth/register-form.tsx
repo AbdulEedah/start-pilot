@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { useRouter } from "next/navigation"
 import * as z from "zod"
 import { toast } from "sonner"
 import { User, Mail, Phone, Lock, Loader2, CheckCircle2 } from "lucide-react"
@@ -18,6 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { useOffline } from "@/components/offline-provider"
 
 const registerSchema = z.object({
   fullName: z.string().min(2, "Full Name must be at least 2 characters"),
@@ -36,6 +38,8 @@ const registerSchema = z.object({
 export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const { register } = useOffline()
+  const router = useRouter()
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -50,22 +54,27 @@ export function RegisterForm() {
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsLoading(true)
-    // Mock registration with uniqueness checks
-    await new Promise((resolve) => setTimeout(resolve, 2000))
     
-    // Simulate error for specific email (for testing)
-    if (values.email === "taken@example.com") {
-      form.setError("email", { message: "Email is already in use" })
+    try {
+      const success = await register(values.email, values.password, values.fullName)
+      
+      if (success) {
+        setIsSuccess(true)
+        toast.success("Account created!", {
+          description: "Welcome to Start Pilot! Let's get you started.",
+        })
+      } else {
+        toast.error("Registration failed", {
+          description: "User with this email already exists",
+        })
+      }
+    } catch (error) {
+      toast.error("Registration failed", {
+        description: "An error occurred during registration",
+      })
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    setIsLoading(false)
-    setIsSuccess(true)
-    
-    toast.success("Account created!", {
-      description: "Please check your email to verify your account.",
-    })
   }
 
   if (isSuccess) {
@@ -74,13 +83,15 @@ export function RegisterForm() {
         <div className="flex justify-center">
           <CheckCircle2 className="h-16 w-16 text-primary animate-bounce" />
         </div>
-        <h2 className="text-2xl font-bold font-heading">Verify your email</h2>
+        <h2 className="text-2xl font-bold font-heading">Welcome to Start Pilot!</h2>
         <p className="text-muted-foreground">
-          We've sent a verification link to <span className="text-foreground font-medium">{form.getValues("email")}</span>. 
-          Please check your inbox to continue.
+          Your account has been created successfully. Let's get you started on your startup journey.
         </p>
-        <Button className="w-full" asChild>
-          <Link href="/onboarding">Continue to Onboarding</Link>
+        <Button 
+          className="w-full" 
+          onClick={() => router.push("/onboarding")}
+        >
+          Continue to Onboarding
         </Button>
         <Button variant="ghost" onClick={() => setIsSuccess(false)} className="w-full text-xs">
           Back to registration
