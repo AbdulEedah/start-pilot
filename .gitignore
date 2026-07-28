@@ -1,4 +1,5 @@
 # Dependencies
+node_modules/
 frontend/node_modules/
 .pnp/
 .pnp.*
@@ -12,6 +13,7 @@ frontend/node_modules/
 frontend/coverage/
 
 # Next.js
+.next/
 frontend/.next/
 frontend/out/
 
@@ -23,6 +25,7 @@ frontend/build/
 *.pem
 .agents/
 .gemini/
+.vscode/
 
 # Debug
 npm-debug.log*
@@ -37,5 +40,8 @@ yarn-error.log*
 frontend/.vercel/
 
 # TypeScript
+*.tsbuildinfo
+next-env.d.ts
 frontend/*.tsbuildinfo
 frontend/next-env.d.ts
+

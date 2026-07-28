@@ -14,8 +14,8 @@ import {
   Filter,
   Lock,
   Send,
-  WifiOff,
-  Loader2
+  Loader2,
+  Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,9 +23,14 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { offlineAI, Mentor } from "@/lib/offline-ai"
+import { useOffline } from "@/components/offline-provider"
+import { getSectorDetails } from "@/lib/sector-utils"
 import { toast } from "sonner"
 
 export default function MentorsPage() {
+  const { sector: activeSectorId } = useOffline()
+  const activeSector = getSectorDetails(activeSectorId)
+
   const [mentors, setMentors] = useState<Mentor[]>([])
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null)
   const [question, setQuestion] = useState("")
@@ -37,7 +42,7 @@ export default function MentorsPage() {
     // Load mentors from offline AI
     const availableMentors = offlineAI.getMentors()
     setMentors(availableMentors)
-  }, [])
+  }, [activeSectorId])
 
   const askMentor = async (mentor: Mentor, question: string) => {
     if (!question.trim()) {
@@ -74,8 +79,7 @@ export default function MentorsPage() {
     switch (availability) {
       case 'available': return 'text-emerald-500'
       case 'busy': return 'text-amber-500'
-      case 'offline': return 'text-gray-500'
-      default: return 'text-gray-500'
+      default: return 'text-emerald-500'
     }
   }
 
@@ -83,8 +87,7 @@ export default function MentorsPage() {
     switch (availability) {
       case 'available': return 'Available now'
       case 'busy': return 'Busy - responds in 24h'
-      case 'offline': return 'Offline'
-      default: return 'Unknown'
+      default: return 'Available now'
     }
   }
 
@@ -94,9 +97,8 @@ export default function MentorsPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold font-heading">Mentorship Hub</h1>
-            <WifiOff className="w-5 h-5 text-orange-500" />
           </div>
-          <p className="text-muted-foreground">Connect with world-class experts in your sector - completely offline.</p>
+          <p className="text-muted-foreground">Connect with world-class experts in your sector in real time.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -259,9 +261,8 @@ export default function MentorsPage() {
                 <Button 
                   size="sm" 
                   className="flex-1 rounded-full"
-                  disabled={mentor.availability === 'offline'}
                 >
-                  {mentor.availability === 'offline' ? 'Offline' : 'Book Session'}
+                  Book Session
                 </Button>
               </div>
             </div>
@@ -292,12 +293,12 @@ export default function MentorsPage() {
           <div className="flex-1 text-center md:text-left space-y-2">
             <h2 className="text-2xl font-bold font-heading">AI-Powered Mentorship</h2>
             <p className="text-primary-foreground/80">
-              Our AI mentors are trained on insights from 500+ real startup advisors and industry experts. Get personalized advice instantly, completely offline.
+              Our AI mentors are trained on insights from 500+ real startup advisors and industry experts. Get personalized advice instantly in real time.
             </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/20">
-            <WifiOff className="w-4 h-4" />
-            <span className="text-sm font-medium">100% Offline</span>
+            <Sparkles className="w-4 h-4" />
+            <span className="text-sm font-medium">Live & Available</span>
           </div>
         </div>
       </div>

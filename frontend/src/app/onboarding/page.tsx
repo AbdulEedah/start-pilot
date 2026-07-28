@@ -5,15 +5,20 @@ import { motion, AnimatePresence } from "framer-motion"
 import { SectorSelection } from "@/components/onboarding/sector-selection"
 import { BackgroundForm } from "@/components/onboarding/background-form"
 import { Rocket } from "lucide-react"
+import { setStoredSector } from "@/lib/sector-utils"
+import { useOffline } from "@/components/offline-provider"
 
 export default function OnboardingPage() {
   const [step, setStep] = useState<"sector" | "background">("sector")
+  const { changeSector, updateUser } = useOffline()
   const [formData, setFormData] = useState({
     sector: "",
     background: {},
   })
 
   const handleSectorSelect = (sector: string) => {
+    setStoredSector(sector)
+    changeSector(sector)
     setFormData({ ...formData, sector })
     setStep("background")
   }
@@ -74,7 +79,11 @@ export default function OnboardingPage() {
               <BackgroundForm 
                 onBack={() => setStep("sector")} 
                 onSubmit={(data) => {
-                  console.log("Onboarding Complete:", { ...formData, background: data })
+                  if (formData.sector) {
+                    setStoredSector(formData.sector)
+                    changeSector(formData.sector)
+                    updateUser({ onboardingCompleted: true })
+                  }
                   window.location.href = "/dashboard/chat"
                 }}
               />

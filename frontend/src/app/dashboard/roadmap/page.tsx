@@ -12,24 +12,25 @@ import {
   FileText,
   Download,
   Plus,
-  Loader2,
-  WifiOff
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { offlineAI } from "@/lib/offline-ai"
 import { offlineStorage, Roadmap, RoadmapItem, StartupIdea } from "@/lib/offline-storage"
 import { useOffline } from "@/components/offline-provider"
+import { getSectorDetails } from "@/lib/sector-utils"
 
 export default function RoadmapPage() {
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const { user } = useOffline()
+  const { user, sector: activeSectorId } = useOffline()
+  const activeSector = getSectorDetails(activeSectorId)
 
   useEffect(() => {
     loadRoadmap()
-  }, [])
+  }, [activeSectorId])
 
   const loadRoadmap = async () => {
     try {
@@ -38,6 +39,8 @@ export default function RoadmapPage() {
       
       if (userRoadmap) {
         setRoadmap(userRoadmap)
+      } else {
+        await generateRoadmap()
       }
     } catch (error) {
       console.error('Failed to load roadmap:', error)
@@ -50,17 +53,17 @@ export default function RoadmapPage() {
     setIsGenerating(true)
     
     try {
-      // Create a sample startup idea for roadmap generation
+      const sectorDetails = getSectorDetails(activeSectorId)
       const sampleIdea: StartupIdea = {
         id: 'current',
-        title: 'AI-Powered Startup Platform',
-        description: 'A platform that helps entrepreneurs validate and build their startup ideas using AI guidance',
-        sector: 'SaaS',
+        title: sectorDetails.defaultIdea.title,
+        description: sectorDetails.defaultIdea.description,
+        sector: activeSectorId,
         stage: 'idea',
-        validationScore: 75,
-        marketSize: '$15.3B',
-        competition: ['Lean Canvas', 'Business Model Canvas', 'Strategyzer'],
-        techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Supabase'],
+        validationScore: 82,
+        marketSize: sectorDetails.marketSize,
+        competition: sectorDetails.competitors,
+        techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Vector Engine'],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }
@@ -70,7 +73,7 @@ export default function RoadmapPage() {
       const newRoadmap: Roadmap = {
         id: 'current',
         startupId: 'current',
-        title: 'AI-Powered Startup Platform Roadmap',
+        title: `${sectorDetails.name} Launch Roadmap`,
         items: roadmapGeneration.items,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -79,8 +82,8 @@ export default function RoadmapPage() {
       await offlineStorage.save('roadmaps', newRoadmap)
       setRoadmap(newRoadmap)
       
-      toast.success("Roadmap generated!", {
-        description: "Your personalized startup roadmap is ready"
+      toast.success(`${sectorDetails.name} Roadmap generated!`, {
+        description: `Customized roadmap for ${sectorDetails.name} is ready`
       })
     } catch (error) {
       console.error('Failed to generate roadmap:', error)
@@ -209,7 +212,6 @@ export default function RoadmapPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold font-heading">Startup Roadmap</h1>
-            <WifiOff className="w-5 h-5 text-orange-500" />
           </div>
           <p className="text-muted-foreground">Your step-by-step path from idea to scale.</p>
         </div>

@@ -4,6 +4,7 @@
  */
 
 import { ChatMessage, StartupIdea, RoadmapItem, PitchAnalysis } from './offline-storage';
+import { getSectorDetails, getStoredSector } from './sector-utils';
 
 export interface Mentor {
   id: string;
@@ -39,63 +40,30 @@ export interface RoadmapGeneration {
 }
 
 class OfflineAI {
-  private ideaTemplates = [
-    {
-      sector: 'SaaS',
-      ideas: [
-        'AI-powered project management tool for remote teams',
-        'Automated customer support chatbot platform',
-        'Smart inventory management system for e-commerce',
-        'Real-time collaboration tool for designers',
-        'Automated social media content scheduler'
-      ]
-    },
-    {
-      sector: 'FinTech',
-      ideas: [
-        'Micro-investment app for spare change',
-        'AI-driven personal finance advisor',
-        'Blockchain-based payment system for freelancers',
-        'Automated expense tracking for small businesses',
-        'Peer-to-peer lending platform'
-      ]
-    },
-    {
-      sector: 'HealthTech',
-      ideas: [
-        'Telemedicine platform for rural areas',
-        'AI-powered symptom checker app',
-        'Mental health support chatbot',
-        'Fitness tracking with personalized coaching',
-        'Medication reminder and tracking system'
-      ]
-    }
-  ];
-
   private responseTemplates = {
     ideation: [
-      "That's an interesting concept! Let me help you refine it further.",
-      "I can see potential in this idea. Here are some considerations:",
-      "This aligns with current market trends. Let's explore the opportunity:",
-      "Great thinking! Let's validate this concept step by step."
+      "That's an impressive concept! Let me help you refine it further for your sector.",
+      "I can see massive potential in this idea. Here are key considerations tailored to your industry:",
+      "This aligns perfectly with modern market trends. Let's analyze the opportunity:",
+      "Great strategic thinking! Let's validate this concept step by step."
     ],
     validation: [
-      "Based on market analysis, here's what I found:",
-      "The validation results show promising indicators:",
-      "Market research reveals several key insights:",
-      "Here's my assessment of your idea's viability:"
+      "Based on current industry analysis and sector metrics, here's what I found:",
+      "The validation results show promising indicators for your target market:",
+      "Deep-dive market research reveals several key insights:",
+      "Here's my comprehensive assessment of your startup's viability:"
     ],
     roadmap: [
-      "I've created a comprehensive roadmap for your startup:",
-      "Here's your step-by-step path to launch:",
-      "Based on your idea, here's the recommended timeline:",
-      "Let's break down your journey into actionable milestones:"
+      "I've created a customized execution roadmap for your startup:",
+      "Here's your step-by-step path to launch and scale:",
+      "Based on your target market, here's the recommended timeline:",
+      "Let's break down your journey into high-impact actionable milestones:"
     ],
     pitch: [
-      "I've analyzed your pitch deck. Here's my feedback:",
-      "Your pitch shows strong potential. Here are areas to improve:",
-      "The investor perspective reveals these insights:",
-      "Here's how to make your pitch more compelling:"
+      "I've analyzed your pitch deck structure for your sector. Here's my feedback:",
+      "Your narrative shows strong potential. Here are areas to optimize:",
+      "From an investor's perspective in this industry, here are key insights:",
+      "Here's how to make your value proposition irresistibly compelling:"
     ]
   };
 
@@ -104,8 +72,8 @@ class OfflineAI {
       id: 'mentor_1',
       name: 'Sarah Chen',
       avatar: '/mentors/sarah.jpg',
-      expertise: ['SaaS', 'Product Management', 'Growth Hacking'],
-      bio: 'Former VP of Product at Stripe, built 3 successful SaaS companies',
+      expertise: ['Technology', 'Product Management', 'Growth Hacking'],
+      bio: 'Former VP of Product at Stripe, built 3 successful tech companies',
       experience: '15+ years in tech, 2 exits, $50M+ raised',
       rating: 4.9,
       availability: 'available'
@@ -146,193 +114,71 @@ class OfflineAI {
     return new Promise(resolve => setTimeout(resolve, delay));
   }
 
-  async generateIdeaResponse(userMessage: string): Promise<AIResponse> {
-    await this.simulateDelay();
+  async validateIdea(idea: string, sectorId: string): Promise<ValidationResult> {
+    await this.simulateDelay(1200, 2200);
 
-    const responses = [
-      `I love the direction you're thinking! ${userMessage.toLowerCase().includes('ai') ? 'AI-powered solutions are definitely trending right now.' : 'This could solve a real problem in the market.'} 
-
-Let me help you refine this concept:
-
-**Market Opportunity:**
-- Growing demand in this space
-- Underserved customer segments
-- Technology enablers are mature
-
-**Key Questions to Explore:**
-1. Who is your specific target customer?
-2. What's their biggest pain point?
-3. How are they solving this today?
-4. What makes your solution 10x better?
-
-**Next Steps:**
-- Conduct customer interviews
-- Research existing solutions
-- Define your unique value proposition
-- Create a simple prototype
-
-Would you like me to help you dive deeper into any of these areas?`,
-
-      `This is a solid foundation for a startup idea! ${userMessage.toLowerCase().includes('saas') ? 'SaaS models have great scalability potential.' : 'The market timing seems right for this type of solution.'}
-
-**Strengths I See:**
-- Clear problem identification
-- Scalable business model potential
-- Technology feasibility
-
-**Areas to Validate:**
-- Market size and growth rate
-- Customer willingness to pay
-- Competitive landscape
-- Technical complexity
-
-**Recommended Validation Steps:**
-1. Create landing page to test demand
-2. Interview 20+ potential customers
-3. Build MVP with core features
-4. Run pilot program with early adopters
-
-I can help you create a detailed validation plan. What aspect would you like to focus on first?`
-    ];
+    const sectorDetails = getSectorDetails(sectorId || getStoredSector());
+    const baseScore = 72 + Math.floor(Math.random() * 20);
 
     return {
-      content: responses[Math.floor(Math.random() * responses.length)],
-      confidence: 0.85 + Math.random() * 0.1,
-      sources: ['Market Research Database', 'Startup Success Patterns', 'Industry Reports']
-    };
-  }
-
-  async validateIdea(idea: string, sector: string): Promise<ValidationResult> {
-    await this.simulateDelay(1500, 3000);
-
-    const baseScore = 65 + Math.random() * 25;
-    const marketSizes = ['$2.5B', '$8.1B', '$15.3B', '$42.7B', '$128.9B'];
-    
-    const competitions = {
-      'SaaS': ['Slack', 'Notion', 'Airtable', 'Monday.com'],
-      'FinTech': ['Stripe', 'Square', 'Robinhood', 'Plaid'],
-      'HealthTech': ['Teladoc', 'Dexcom', 'Veracyte', 'Guardant Health'],
-      'default': ['Various startups', 'Enterprise solutions', 'Legacy systems']
-    };
-
-    return {
-      score: Math.round(baseScore),
-      marketSize: marketSizes[Math.floor(Math.random() * marketSizes.length)],
-      competition: competitions[sector as keyof typeof competitions] || competitions.default,
+      score: baseScore,
+      marketSize: sectorDetails.marketSize,
+      competition: sectorDetails.competitors,
       strengths: [
-        'Strong market demand',
-        'Clear value proposition',
-        'Scalable technology',
-        'Experienced team potential'
+        `Strong tailwinds in ${sectorDetails.name}`,
+        `Clear target audience (${sectorDetails.targetAudience})`,
+        `High-impact key metrics focus: ${sectorDetails.keyMetrics[0]}`,
+        `Scalable business model opportunity`
       ],
       weaknesses: [
-        'Competitive market',
-        'Customer acquisition challenges',
-        'Technical complexity',
-        'Regulatory considerations'
+        `Competitive pressure from established players like ${sectorDetails.competitors.slice(0, 2).join(' and ')}`,
+        `Industry-specific compliance & regulatory hurdles`,
+        `Customer acquisition efficiency in early phases`,
+        `Demonstrating rapid payback velocity`
       ],
       recommendations: [
-        'Focus on specific niche initially',
-        'Build strong MVP quickly',
-        'Establish key partnerships',
-        'Secure early customer commitments'
+        `Focus on your unique value proposition vs ${sectorDetails.competitors[0] || 'incumbents'}`,
+        `Build an early pilot program around ${sectorDetails.keyMetrics[0]}`,
+        `Validate customer willingness-to-pay early`,
+        `Follow the recommended ${sectorDetails.name} launch roadmap`
       ]
     };
   }
 
   async generateRoadmap(idea: StartupIdea): Promise<RoadmapGeneration> {
-    await this.simulateDelay(2000, 4000);
+    await this.simulateDelay(1500, 2500);
 
-    const baseItems: RoadmapItem[] = [
-      {
-        id: this.generateId(),
-        title: 'Market Research & Validation',
-        description: 'Conduct comprehensive market research and validate core assumptions',
-        category: 'product',
-        priority: 'critical',
-        timeframe: 'Weeks 1-4',
-        status: 'pending',
-        dependencies: []
-      },
-      {
-        id: this.generateId(),
-        title: 'MVP Development',
-        description: 'Build minimum viable product with core features',
-        category: 'product',
-        priority: 'critical',
-        timeframe: 'Weeks 5-12',
-        status: 'pending',
-        dependencies: ['Market Research & Validation']
-      },
-      {
-        id: this.generateId(),
-        title: 'Legal Structure Setup',
-        description: 'Incorporate company, set up legal framework',
-        category: 'legal',
-        priority: 'high',
-        timeframe: 'Weeks 2-6',
-        status: 'pending',
-        dependencies: []
-      },
-      {
-        id: this.generateId(),
-        title: 'Initial Team Hiring',
-        description: 'Recruit key team members (CTO, lead developer)',
-        category: 'team',
-        priority: 'high',
-        timeframe: 'Weeks 8-16',
-        status: 'pending',
-        dependencies: ['Legal Structure Setup']
-      },
-      {
-        id: this.generateId(),
-        title: 'Beta Testing Program',
-        description: 'Launch beta with select customers, gather feedback',
-        category: 'product',
-        priority: 'high',
-        timeframe: 'Weeks 13-20',
-        status: 'pending',
-        dependencies: ['MVP Development']
-      },
-      {
-        id: this.generateId(),
-        title: 'Seed Funding Round',
-        description: 'Raise seed funding to accelerate growth',
-        category: 'funding',
-        priority: 'medium',
-        timeframe: 'Weeks 16-24',
-        status: 'pending',
-        dependencies: ['Beta Testing Program']
-      },
-      {
-        id: this.generateId(),
-        title: 'Go-to-Market Strategy',
-        description: 'Develop and execute customer acquisition strategy',
-        category: 'marketing',
-        priority: 'high',
-        timeframe: 'Weeks 20-28',
-        status: 'pending',
-        dependencies: ['Beta Testing Program']
-      }
-    ];
+    const sectorDetails = getSectorDetails(idea.sector || getStoredSector());
+
+    const baseItems: RoadmapItem[] = sectorDetails.sampleRoadmap.map((item, idx) => ({
+      id: this.generateId(),
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      priority: item.priority,
+      timeframe: item.timeframe,
+      status: idx === 0 ? 'in-progress' : 'pending',
+      dependencies: idx > 0 ? [sectorDetails.sampleRoadmap[idx - 1].title] : []
+    }));
 
     return {
       items: baseItems,
-      timeline: '6-8 months to market launch',
+      timeline: '6-8 months to commercial scale',
       milestones: [
-        'Month 1: Validated problem-solution fit',
-        'Month 3: MVP completed and tested',
-        'Month 4: Beta customers onboarded',
-        'Month 6: Seed funding secured',
-        'Month 8: Public launch and growth'
+        `Month 1: Initial ${sectorDetails.name} pilot setup & architecture`,
+        `Month 3: MVP completion & compliance verification`,
+        `Month 5: Beta launch with target audience (${sectorDetails.targetAudience})`,
+        `Month 7: Commercial rollout & key metric tracking (${sectorDetails.keyMetrics[0]})`,
+        `Month 9: Funding round & market expansion`
       ]
     };
   }
 
   async analyzePitch(pitchContent: string): Promise<PitchAnalysis> {
-    await this.simulateDelay(3000, 5000);
+    await this.simulateDelay(2000, 3500);
 
-    const generateScore = () => Math.round(60 + Math.random() * 35);
+    const activeSector = getSectorDetails();
+    const generateScore = () => Math.round(70 + Math.random() * 25);
 
     const scores = {
       clarity: generateScore(),
@@ -356,23 +202,22 @@ I can help you create a detailed validation plan. What aspect would you like to 
       scores,
       feedback: {
         strengths: [
-          'Clear problem identification',
-          'Strong market opportunity',
-          'Compelling value proposition',
-          'Realistic financial projections'
+          `Clear positioning in the ${activeSector.name} sector`,
+          `Addressable market size of ${activeSector.marketSize} highlighted`,
+          `Strong awareness of target customer segment (${activeSector.targetAudience})`,
+          `Solid grasp of core unit metrics like ${activeSector.keyMetrics[0]}`
         ],
         weaknesses: [
-          'Competition analysis could be deeper',
-          'Go-to-market strategy needs refinement',
-          'Team section could highlight more experience',
-          'Risk mitigation strategies unclear'
+          `Competitive differentiation against ${activeSector.competitors[0]} could be sharper`,
+          `Go-to-market timeline needs regulatory/compliance milestones`,
+          `Highlight more domain expertise in ${activeSector.name}`,
+          `Financial projections should break down CAC payback period`
         ],
         suggestions: [
-          'Add more customer validation data',
-          'Include competitive differentiation matrix',
-          'Strengthen team credentials section',
-          'Add detailed financial breakdown',
-          'Include customer testimonials or LOIs'
+          `Emphasize why incumbent solutions like ${activeSector.competitors.slice(0, 2).join(', ')} fail`,
+          `Include pilot metrics focused on ${activeSector.keyMetrics.join(' and ')}`,
+          `Add customer LOIs or pilot partner logos to traction slide`,
+          `Detail your capital efficiency and 18-month runway plan`
         ]
       },
       createdAt: new Date().toISOString()
@@ -380,207 +225,146 @@ I can help you create a detailed validation plan. What aspect would you like to 
   }
 
   async getChatResponse(message: string, context?: any): Promise<AIResponse> {
-    await this.simulateDelay();
+    await this.simulateDelay(800, 1600);
 
+    const sectorId = context?.sector || getStoredSector();
+    const sectorDetails = getSectorDetails(sectorId);
     const messageType = this.detectMessageType(message);
-    const template = this.getRandomTemplate(messageType);
 
     let response = '';
 
     switch (messageType) {
       case 'ideation':
-        response = await this.generateIdeationResponse(message);
+        response = await this.generateIdeationResponse(message, sectorDetails);
         break;
       case 'validation':
-        response = await this.generateValidationResponse(message);
+        response = await this.generateValidationResponse(message, sectorDetails);
         break;
       case 'roadmap':
-        response = await this.generateRoadmapResponse(message);
+        response = await this.generateRoadmapResponse(message, sectorDetails);
         break;
       case 'pitch':
-        response = await this.generatePitchResponse(message);
+        response = await this.generatePitchResponse(message, sectorDetails);
         break;
       default:
-        response = await this.generateGeneralResponse(message);
+        response = await this.generateGeneralResponse(message, sectorDetails);
     }
 
     return {
       content: response,
-      confidence: 0.8 + Math.random() * 0.15,
-      sources: ['AI Knowledge Base', 'Startup Database', 'Market Intelligence']
+      confidence: 0.88 + Math.random() * 0.1,
+      sources: [`${sectorDetails.name} Intelligence`, 'Market Research Database', 'Start Pilot AI Engine']
     };
   }
 
   private detectMessageType(message: string): keyof typeof this.responseTemplates {
     const lowerMessage = message.toLowerCase();
     
-    if (lowerMessage.includes('idea') || lowerMessage.includes('concept') || lowerMessage.includes('startup')) {
+    if (lowerMessage.includes('idea') || lowerMessage.includes('concept') || lowerMessage.includes('startup') || lowerMessage.includes('build')) {
       return 'ideation';
     }
-    if (lowerMessage.includes('validate') || lowerMessage.includes('market') || lowerMessage.includes('viable')) {
+    if (lowerMessage.includes('validate') || lowerMessage.includes('market') || lowerMessage.includes('viable') || lowerMessage.includes('competitor')) {
       return 'validation';
     }
-    if (lowerMessage.includes('roadmap') || lowerMessage.includes('plan') || lowerMessage.includes('timeline')) {
+    if (lowerMessage.includes('roadmap') || lowerMessage.includes('plan') || lowerMessage.includes('timeline') || lowerMessage.includes('milestone')) {
       return 'roadmap';
     }
-    if (lowerMessage.includes('pitch') || lowerMessage.includes('investor') || lowerMessage.includes('funding')) {
+    if (lowerMessage.includes('pitch') || lowerMessage.includes('investor') || lowerMessage.includes('funding') || lowerMessage.includes('deck')) {
       return 'pitch';
     }
     
-    return 'ideation'; // default
+    return 'ideation';
   }
 
-  private async generateIdeationResponse(message: string): Promise<string> {
+  private async generateIdeationResponse(message: string, sector: ReturnType<typeof getSectorDetails>): Promise<string> {
     return `${this.getRandomTemplate('ideation')}
 
-I can help you explore this idea further. Here are some key areas we should focus on:
+**Sector Focus: ${sector.name}**
 
-**🎯 Target Market Analysis**
-- Who exactly would use this?
-- What's their current pain point?
-- How big is this market?
+I've tailored my analysis for **${sector.name}** (Total Addressable Market: **${sector.marketSize}**):
 
-**💡 Unique Value Proposition**
-- What makes this different?
-- Why would customers choose you?
-- What's your competitive advantage?
+**🎯 Target Customer & Segment**
+- **Primary Audience:** ${sector.targetAudience}
+- **Default Strategic Concept:** *${sector.defaultIdea.title}* — ${sector.defaultIdea.description}
 
-**🛠 Technical Feasibility**
-- What technology stack would you need?
-- Are there any technical challenges?
-- What's the development timeline?
+**💡 Key Metrics To Track**
+${sector.keyMetrics.map(m => `- ${m}`).join('\n')}
 
-**💰 Business Model**
-- How would you monetize this?
-- What's the pricing strategy?
-- What are the unit economics?
+**🚀 Industry Landscape**
+- Key Competitors to Note: **${sector.competitors.join(', ')}**
+- Core Competitive Moat: Deep domain integration and metric velocity.
 
-Would you like me to dive deeper into any of these areas? I can also help you create a validation plan or generate a preliminary roadmap.`;
+Would you like me to generate a tailored validation plan or outline a launch roadmap for your ${sector.name} venture?`;
   }
 
-  private async generateValidationResponse(message: string): Promise<string> {
+  private async generateValidationResponse(message: string, sector: ReturnType<typeof getSectorDetails>): Promise<string> {
     return `${this.getRandomTemplate('validation')}
 
-**Market Validation Checklist:**
-✅ Problem-Solution Fit
-- Conduct customer interviews
-- Survey target market
-- Analyze existing solutions
+**Validation Blueprint for ${sector.name}:**
 
-✅ Market Size Assessment
-- Total Addressable Market (TAM)
-- Serviceable Addressable Market (SAM)
-- Serviceable Obtainable Market (SOM)
+✅ **Market Opportunity & Size**
+- **TAM:** ${sector.marketSize}
+- **Primary Buyers:** ${sector.targetAudience}
 
-✅ Competitive Analysis
-- Direct competitors
-- Indirect competitors
-- Competitive advantages
+✅ **Competitive Matrix**
+- Key Benchmarks: **${sector.competitors.join(', ')}**
+- Your Strategic Edge: Focus on ${sector.keyMetrics[0]} and lower total cost of ownership.
 
-✅ Customer Validation
-- Landing page tests
-- Pre-orders or LOIs
-- Beta user feedback
+✅ **High-Priority Metrics for Investors**
+${sector.keyMetrics.map(m => `- ${m}`).join('\n')}
 
-**Recommended Next Steps:**
-1. Create customer interview script
-2. Build simple landing page
-3. Run targeted ads to test demand
-4. Analyze competitor pricing
-5. Calculate unit economics
+**Recommended Action Steps:**
+1. Execute pilot study with target buyers (${sector.targetAudience}).
+2. Benchmark your prototype performance against ${sector.competitors[0] || 'incumbents'}.
+3. Create customer validation deck focused on ${sector.keyMetrics[0]}.
 
-I can help you create detailed validation experiments for each of these areas. What would you like to start with?`;
+What specific element of this ${sector.name} validation strategy should we refine first?`;
   }
 
-  private async generateRoadmapResponse(message: string): Promise<string> {
+  private async generateRoadmapResponse(message: string, sector: ReturnType<typeof getSectorDetails>): Promise<string> {
     return `${this.getRandomTemplate('roadmap')}
 
-**Phase 1: Foundation (Months 1-2)**
-- Market research and validation
-- Legal entity setup
-- Initial team formation
-- MVP specification
+**Execution Milestones for ${sector.name}:**
 
-**Phase 2: Development (Months 3-4)**
-- MVP development
-- Beta testing program
-- Customer feedback integration
-- Initial marketing strategy
+${sector.sampleRoadmap.map((item, i) => `**Phase ${i + 1}: ${item.title} (${item.timeframe})**\n- ${item.description}\n- Focus: ${item.category.toUpperCase()} [${item.priority.toUpperCase()}]`).join('\n\n')}
 
-**Phase 3: Launch (Months 5-6)**
-- Product launch
-- Customer acquisition
-- Funding preparation
-- Team scaling
+**Target Output:** Commercial readiness in 6-8 months targeting **${sector.targetAudience}**.
 
-**Phase 4: Growth (Months 7-12)**
-- Scale customer base
-- Product iteration
-- Series A preparation
-- Market expansion
-
-Each phase has specific milestones and success metrics. Would you like me to break down any particular phase in more detail?`;
+Would you like to customize any of these milestone timeframes or assign priorities?`;
   }
 
-  private async generatePitchResponse(message: string): Promise<string> {
+  private async generatePitchResponse(message: string, sector: ReturnType<typeof getSectorDetails>): Promise<string> {
     return `${this.getRandomTemplate('pitch')}
 
-**Essential Pitch Deck Elements:**
+**Essential Pitch Deck Framework for ${sector.name}:**
 
-1. **Problem** - Clear, relatable pain point
-2. **Solution** - Your unique approach
-3. **Market** - Size and opportunity
-4. **Product** - Demo or screenshots
-5. **Traction** - Growth metrics
-6. **Business Model** - Revenue strategy
-7. **Competition** - Competitive landscape
-8. **Team** - Why you'll win
-9. **Financials** - Projections and unit economics
-10. **Funding** - Ask and use of funds
+1. **Problem Statement:** Quantify the pain experienced by ${sector.targetAudience}.
+2. **Solution:** Present your unique innovation.
+3. **Market Opportunity:** Addressable market of ${sector.marketSize}.
+4. **Key Traction Metrics:** Highlight ${sector.keyMetrics.join(', ')}.
+5. **Competitive Advantage:** Direct comparison against ${sector.competitors.join(', ')}.
+6. **Financial Projections:** Clear path to revenue growth and scalable unit economics.
 
-**Investor Perspective Tips:**
-- Lead with the problem, not the solution
-- Show, don't just tell
-- Include social proof and validation
-- Be realistic about market size
-- Demonstrate clear path to profitability
+**Sector Pro-Tips for ${sector.name}:**
+${sector.pitchTips.map(t => `- **${t.title}:** ${t.content} (*${t.proTip}*)`).join('\n')}
 
-Would you like me to review a specific section of your pitch or help you develop any of these elements?`;
+Would you like me to review your pitch script or structure your investor presentation?`;
   }
 
-  private async generateGeneralResponse(message: string): Promise<string> {
-    const responses = [
-      `Great question! Let me help you think through this systematically.`,
-      `I understand what you're looking for. Here's my perspective:`,
-      `That's an important consideration for any startup. Let me break it down:`,
-      `I can definitely help with that. Here's what I recommend:`
-    ];
+  private async generateGeneralResponse(message: string, sector: ReturnType<typeof getSectorDetails>): Promise<string> {
+    return `I'm analyzing your request within the context of **${sector.name}**.
 
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    
-    return `${randomResponse}
+**Industry Perspective:**
+- **Target Audience:** ${sector.targetAudience}
+- **Market Size:** ${sector.marketSize}
+- **Primary Metrics:** ${sector.keyMetrics.slice(0, 2).join(' & ')}
 
-Based on my analysis of successful startups, here are the key factors to consider:
+**Strategic Recommendations:**
+- Validate your value proposition against ${sector.competitors[0]}
+- Focus initial effort on driving high ${sector.keyMetrics[0]}
+- Execute against your sector-tailored roadmap
 
-**Strategic Approach:**
-- Focus on customer needs first
-- Validate assumptions early and often
-- Build incrementally and iterate
-- Measure what matters
-
-**Execution Excellence:**
-- Set clear milestones
-- Track key metrics
-- Stay close to customers
-- Adapt quickly to feedback
-
-**Growth Mindset:**
-- Think scalable from day one
-- Build strong team culture
-- Maintain product quality
-- Plan for sustainable growth
-
-Is there a specific aspect of your startup journey you'd like to explore further? I'm here to help with ideation, validation, roadmapping, or any other challenges you're facing.`;
+How can I assist you further with your ${sector.name} startup today?`;
   }
 
   getMentors(): Mentor[] {
@@ -595,36 +379,25 @@ Is there a specific aspect of your startup journey you'd like to explore further
       throw new Error('Mentor not found');
     }
 
-    const advice = `Hi! ${mentor.name} here. Based on my experience in ${mentor.expertise.join(', ')}, here's my advice:
+    const sectorDetails = getSectorDetails();
+
+    const advice = `Hi! ${mentor.name} here. Based on my experience in ${mentor.expertise.join(', ')} and our focus on ${sectorDetails.name}, here's my advice:
 
 ${question.toLowerCase().includes('funding') ? 
   `**Fundraising Insights:**
-  - Investors invest in people first, ideas second
-  - Traction speaks louder than projections
-  - Know your numbers inside and out
-  - Build relationships before you need them
+  - In ${sectorDetails.name}, investors look closely at ${sectorDetails.keyMetrics[0]}.
+  - Traction speaks louder than projections. Show real buyer engagement from ${sectorDetails.targetAudience}.
+  - Position clearly against incumbents like ${sectorDetails.competitors[0]}.
+  - Know your unit economics inside out.` :
   
-  In my experience raising $200M+, the key is demonstrating clear product-market fit and a path to scalable growth.` :
-  
-  question.toLowerCase().includes('product') ?
-  `**Product Development Wisdom:**
-  - Start with the customer problem, not the solution
-  - Build the minimum viable product first
-  - Iterate based on real user feedback
-  - Focus on core value proposition
-  
-  From building multiple successful products, I've learned that simplicity and user focus always win.` :
-  
-  `**Startup Strategy:**
-  - Validate early and often
-  - Focus on one thing and do it exceptionally well
-  - Build a strong team culture from day one
-  - Stay close to your customers
-  
-  The most successful founders I've worked with are obsessed with solving real problems for real people.`
+  `**Execution & Growth:**
+  - Start with the core customer problem for ${sectorDetails.targetAudience}.
+  - Build your MVP around ${sectorDetails.keyMetrics[0]}.
+  - Move fast to establish your competitive moat against ${sectorDetails.competitors.slice(0, 2).join(' and ')}.
+  - Benchmark performance regularly.`
 }
 
-Feel free to ask me more specific questions about your situation. I'm here to help!`;
+Feel free to ask me more specific questions about your venture. I'm here to help!`;
 
     return {
       content: advice,

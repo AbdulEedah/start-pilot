@@ -15,22 +15,12 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { isAuthenticated, user, logout } = useOffline()
+  const { user, logout } = useOffline()
   const router = useRouter()
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/login")
-    }
-  }, [isAuthenticated, router])
 
   const handleLogout = async () => {
     await logout()
     router.push("/")
-  }
-
-  if (!isAuthenticated) {
-    return null
   }
 
   return (

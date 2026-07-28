@@ -1,14 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Rocket, Target, Zap, Clock, WifiOff, MessageSquare, Users, TrendingUp } from "lucide-react"
+import { Rocket, Target, Zap, Clock, MessageSquare, Users, TrendingUp, ShieldCheck, Layers, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useOffline } from "@/components/offline-provider"
 import { offlineStorage, ChatSession, Roadmap } from "@/lib/offline-storage"
+import { getSectorDetails } from "@/lib/sector-utils"
 
 export default function DashboardPage() {
-  const { user } = useOffline()
+  const { user, sector: activeSectorId } = useOffline()
+  const activeSector = getSectorDetails(activeSectorId)
   const [stats, setStats] = useState({
     chatSessions: 0,
     roadmapProgress: 0,
@@ -60,15 +62,16 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold font-heading">
             {getGreeting()}, {user?.name || 'Founder'}
           </h1>
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 text-orange-600 text-xs font-medium">
-            <WifiOff className="w-3 h-3" />
-            Offline Mode
-          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${activeSector.badgeColor}`}>
+            {activeSector.name}
+          </span>
         </div>
-        <p className="text-muted-foreground">Here's what's happening with your startup today - completely offline and private.</p>
+        <p className="text-muted-foreground">
+          Here's what's happening with your <strong className="text-foreground">{activeSector.name}</strong> venture today.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="p-6 rounded-3xl bg-card border border-border/50 space-y-4">
           <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
             <Rocket className="w-6 h-6 text-primary" />
@@ -93,7 +96,7 @@ export default function DashboardPage() {
             <MessageSquare className="w-6 h-6 text-violet-500" />
           </div>
           <div>
-            <h3 className="font-bold">AI Conversations</h3>
+            <h3 className="font-bold">AI Copilot Vibe</h3>
             <p className="text-sm text-muted-foreground">{stats.chatSessions} active sessions</p>
           </div>
           <Link href="/dashboard/chat">
@@ -104,11 +107,24 @@ export default function DashboardPage() {
         </div>
 
         <div className="p-6 rounded-3xl bg-card border border-border/50 space-y-4">
+          <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+            <Layers className="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="font-bold">Active Sector</h3>
+            <p className="text-sm text-muted-foreground">{activeSector.name}</p>
+          </div>
+          <div className="text-xs text-amber-600 font-medium">
+            TAM: {activeSector.marketSize}
+          </div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-card border border-border/50 space-y-4">
           <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
             <Zap className="w-6 h-6 text-emerald-500" />
           </div>
           <div>
-            <h3 className="font-bold">Offline Features</h3>
+            <h3 className="font-bold">Platform Status</h3>
             <p className="text-sm text-muted-foreground">Unlimited usage</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
@@ -188,10 +204,10 @@ export default function DashboardPage() {
               color: "text-emerald-500"
             },
             { 
-              icon: WifiOff, 
-              text: "Switched to offline mode for privacy", 
+              icon: Zap, 
+              text: "AI Engine sync completed successfully", 
               time: "2 days ago",
-              color: "text-orange-500"
+              color: "text-emerald-500"
             },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-accent/30 border border-border/50">
@@ -207,16 +223,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Offline Benefits */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20">
+      {/* Live & Connected Platform Benefits */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-primary/10 to-emerald-500/10 border border-primary/20">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center">
-            <WifiOff className="w-6 h-6 text-orange-500" />
+          <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+            <ShieldCheck className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-orange-900 dark:text-orange-100">100% Offline & Private</h3>
-            <p className="text-sm text-orange-700 dark:text-orange-200">
-              Your startup ideas, conversations, and data never leave your device. Work with complete privacy and security.
+            <h3 className="font-bold text-foreground">Real-Time & Secure Platform</h3>
+            <p className="text-sm text-muted-foreground">
+              Your startup workspace is active with continuous AI insights, enterprise-grade encryption, and live market intelligence.
             </p>
           </div>
         </div>

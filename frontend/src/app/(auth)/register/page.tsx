@@ -8,12 +8,8 @@ export default function RegisterPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/onboarding");
+    router.replace("/dashboard");
   }, [router]);
 
-  return (
-    <div className="opacity-0 pointer-events-none">
-      <AuthForm initialTab="register" />
-    </div>
-  );
+  return null;
 }

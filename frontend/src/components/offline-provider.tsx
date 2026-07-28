@@ -3,11 +3,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { offlineAuth } from '@/lib/offline-auth';
 import { offlineStorage, User } from '@/lib/offline-storage';
+import { getStoredSector, setStoredSector } from '@/lib/sector-utils';
 
 interface OfflineContextType {
   isOnline: boolean;
   user: User | null;
   isAuthenticated: boolean;
+  sector: string;
+  changeSector: (newSector: string) => void;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -16,98 +19,88 @@ interface OfflineContextType {
 
 const OfflineContext = createContext<OfflineContextType | undefined>(undefined);
 
+const DEFAULT_DEMO_USER: User = {
+  id: 'demo-user-1',
+  email: 'demo@startpilot.com',
+  name: 'Demo Founder',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  subscription: 'pro',
+  onboardingCompleted: true
+};
+
 export function OfflineProvider({ children }: { children: React.ReactNode }) {
-  const [isOnline, setIsOnline] = useState(false); // Always offline for this demo
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isOnline, setIsOnline] = useState(true); // Connected / Live online status
+  const [user, setUser] = useState<User | null>(DEFAULT_DEMO_USER);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [sector, setSectorState] = useState<string>("technology");
 
   useEffect(() => {
-    // Initialize offline storage
+    // Initialize offline storage in background
     offlineStorage.init().catch(console.error);
 
-    // Check if user is already logged in
-    const currentUser = offlineAuth.getCurrentUser();
-    if (currentUser && offlineAuth.isAuthenticated()) {
-      setUser(currentUser);
-      setIsAuthenticated(true);
-    }
+    const initialSector = getStoredSector();
+    setSectorState(initialSector);
 
-    // Set up demo data if first time
-    setupDemoData();
+    const currentUser = offlineAuth.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    } else {
+      setUser(DEFAULT_DEMO_USER);
+    }
+    setIsAuthenticated(true);
+
+    const handleSectorChange = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setSectorState(customEvent.detail);
+      }
+    };
+
+    window.addEventListener("startpilot_sector_changed", handleSectorChange);
+    return () => {
+      window.removeEventListener("startpilot_sector_changed", handleSectorChange);
+    };
   }, []);
 
-  const setupDemoData = async () => {
-    try {
-      // Check if demo user already exists
-      const users = await offlineStorage.getAll('users');
-      if (users.length === 0) {
-        // Create demo user
-        await offlineAuth.register({
-          email: 'demo@startpilot.com',
-          password: 'demo123',
-          name: 'Demo User'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to setup demo data:', error);
-    }
+  const changeSector = (newSector: string) => {
+    setStoredSector(newSector);
+    setSectorState(newSector);
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const result = await offlineAuth.login({ email, password });
-      if (result.success && result.user) {
-        setUser(result.user);
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login failed:', error);
-      return false;
-    }
+    const activeUser = { ...DEFAULT_DEMO_USER, email: email || DEFAULT_DEMO_USER.email };
+    setUser(activeUser);
+    setIsAuthenticated(true);
+    return true;
   };
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    try {
-      const result = await offlineAuth.register({ email, password, name });
-      if (result.success && result.user) {
-        setUser(result.user);
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Registration failed:', error);
-      return false;
-    }
+    const newUser = {
+      ...DEFAULT_DEMO_USER,
+      email: email || DEFAULT_DEMO_USER.email,
+      name: name || DEFAULT_DEMO_USER.name
+    };
+    setUser(newUser);
+    setIsAuthenticated(true);
+    return true;
   };
 
   const logout = async (): Promise<void> => {
-    try {
-      await offlineAuth.logout();
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    // Auth is frozen - logout stays authenticated as demo user
+    setUser(DEFAULT_DEMO_USER);
+    setIsAuthenticated(true);
   };
 
   const updateUser = async (updates: Partial<User>): Promise<void> => {
-    try {
-      const result = await offlineAuth.updateProfile(updates);
-      if (result.success && result.user) {
-        setUser(result.user);
-      }
-    } catch (error) {
-      console.error('Profile update failed:', error);
-    }
+    setUser(prev => (prev ? { ...prev, ...updates } : { ...DEFAULT_DEMO_USER, ...updates }));
   };
 
   const value: OfflineContextType = {
     isOnline,
-    user,
-    isAuthenticated,
+    user: user || DEFAULT_DEMO_USER,
+    isAuthenticated: true,
+    sector,
+    changeSector,
     login,
     register,
     logout,
