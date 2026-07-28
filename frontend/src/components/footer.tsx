@@ -88,6 +88,11 @@ export function Footer() {
                   FAQ
                 </Link>
               </li>
+              <li>
+                <Link href="/admin" className="hover:text-primary transition-colors font-semibold text-primary/80">
+                  Admin Center
+                </Link>
+              </li>
             </ul>
           </div>
 
