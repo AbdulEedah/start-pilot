@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, Bot, User, Sparkles, Loader2, ChevronRight, Layers, ArrowUpRight } from "lucide-react"
+import Link from "next/link"
+import { Send, Bot, User, Sparkles, Loader2, ChevronRight, Layers, ArrowUpRight, Lock, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -206,23 +207,20 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Sector Switcher Dropdown */}
-          <div className="flex items-center gap-1 bg-accent/50 p-1 rounded-full border border-border/50">
-            <Layers className="w-3.5 h-3.5 ml-2 text-muted-foreground" />
-            <select
-              value={activeSectorId}
-              onChange={(e) => {
-                changeSector(e.target.value)
-                toast.success(`Switched sector to ${SECTORS[e.target.value]?.name}`)
-              }}
-              className="bg-transparent text-xs font-semibold px-2 py-1 focus:outline-none cursor-pointer"
+          {/* Locked Sector Badge with link to Onboarding */}
+          <div className="flex items-center gap-2 bg-card border border-border/80 px-3 py-1.5 rounded-full shadow-xs">
+            <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold">
+              Sector: <span className="text-primary font-bold">{sectorDetails.name}</span>
+            </span>
+            <Link
+              href="/onboarding"
+              className="ml-1 text-[11px] font-medium text-muted-foreground hover:text-primary underline flex items-center gap-1 transition-colors"
+              title="To change your sector, you must return to Onboarding"
             >
-              {Object.values(SECTORS).map((s) => (
-                <option key={s.id} value={s.id} className="bg-popover text-popover-foreground">
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              <RotateCcw className="w-3 h-3" />
+              Change in Onboarding
+            </Link>
           </div>
 
           <Button 
