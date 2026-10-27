@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useOffline } from "@/components/offline-provider"
+import { useAuth } from "@/components/auth-provider"
 
 const loginSchema = z.object({
   identifier: z.string().min(1, "Email or Phone Number is required"),
@@ -32,7 +32,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loginType, setLoginType] = useState<"email" | "phone">("email")
-  const { login } = useOffline()
+  const { login } = useAuth()
   const router = useRouter()
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -46,23 +46,16 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     setIsLoading(true)
-    
+
     try {
-      const success = await login(values.identifier, values.password)
-      
-      if (success) {
-        toast.success("Welcome back!", {
-          description: `Logged in as ${values.identifier}`,
-        })
-        router.push("/dashboard")
-      } else {
-        toast.error("Login failed", {
-          description: "Invalid email or password. Try demo@startpilot.com / demo123",
-        })
-      }
-    } catch (error) {
+      await login(values.identifier, values.password)
+      toast.success("Welcome back!", {
+        description: `Logged in as ${values.identifier}`,
+      })
+      router.push("/dashboard")
+    } catch (error: any) {
       toast.error("Login failed", {
-        description: "An error occurred during login",
+        description: error?.message || "Invalid email or password.",
       })
     } finally {
       setIsLoading(false)
@@ -71,12 +64,6 @@ export function LoginForm() {
 
   return (
     <div className="space-y-4">
-      {/* Demo Credentials Helper */}
-      <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-        <p className="text-xs text-primary font-medium mb-1">Demo Credentials:</p>
-        <p className="text-xs text-muted-foreground">Email: demo@startpilot.com</p>
-        <p className="text-xs text-muted-foreground">Password: demo123</p>
-      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

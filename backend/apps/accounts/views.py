@@ -33,19 +33,19 @@ class RegisterView(APIView):
     """
     POST /api/v1/auth/register/
 
-    Create a new user account.
-    Returns the created user object; JWT tokens are obtained via login.
+    Create a new user account and auto-login.
+    Returns JWT access + refresh tokens and user data.
     """
 
     permission_classes = [AllowAny]
 
     @extend_schema(
         request=RegisterSerializer,
-        responses={201: UserSerializer},
-        summary="Register a new user",
+        responses={201: LoginSerializer},
+        summary="Register a new user and auto-login",
     )
     def post(self, request, *args, **kwargs):
-        """Validate payload, create user, return user data."""
+        """Validate payload, create user, return user data with tokens."""
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -55,7 +55,15 @@ class RegisterView(APIView):
             full_name=serializer.validated_data["full_name"],
         )
 
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        # Auto-login: generate JWT tokens for the newly created user
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        from .serializers import UserSerializer
+        return Response({
+            "user": UserSerializer(user).data,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        }, status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):

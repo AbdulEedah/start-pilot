@@ -4,18 +4,16 @@ import { useEffect, useState } from "react"
 import { Rocket, Target, Zap, Clock, MessageSquare, Users, TrendingUp, ShieldCheck, Layers, Sparkles, Lock, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { useOffline } from "@/components/offline-provider"
-import { offlineStorage, ChatSession, Roadmap } from "@/lib/offline-storage"
+import { useAuth } from "@/components/auth-provider"
 import { getSectorDetails } from "@/lib/sector-utils"
+import { profilesApi } from "@/lib/api/profiles"
 
 export default function DashboardPage() {
-  const { user, sector: activeSectorId } = useOffline()
+  const { user, sector: activeSectorId } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
   const [stats, setStats] = useState({
-    chatSessions: 0,
     roadmapProgress: 0,
-    totalTasks: 0,
-    completedTasks: 0
+    generationStatus: "pending"
   })
 
   useEffect(() => {
@@ -24,24 +22,10 @@ export default function DashboardPage() {
 
   const loadDashboardStats = async () => {
     try {
-      const chatSessions = await offlineStorage.getAll<ChatSession>('chatSessions')
-      const roadmaps = await offlineStorage.getAll<Roadmap>('roadmaps')
-      
-      let totalTasks = 0
-      let completedTasks = 0
-      
-      roadmaps.forEach(roadmap => {
-        totalTasks += roadmap.items.length
-        completedTasks += roadmap.items.filter(item => item.status === 'completed').length
-      })
-
-      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-
+      const status = await profilesApi.getStatus()
       setStats({
-        chatSessions: chatSessions.length,
-        roadmapProgress: progress,
-        totalTasks,
-        completedTasks
+        roadmapProgress: status.onboarding_completed ? 100 : 0,
+        generationStatus: status.generation_status
       })
     } catch (error) {
       console.error('Failed to load dashboard stats:', error)
@@ -61,7 +45,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-bold font-heading">
-              {getGreeting()}, {user?.name || 'Founder'}
+              {getGreeting()}, {user?.full_name || 'Founder'}
             </h1>
             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${activeSector.badgeColor} flex items-center gap-1.5`}>
               <Lock className="w-3 h-3 text-muted-foreground" />
@@ -89,9 +73,9 @@ export default function DashboardPage() {
             <Rocket className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold">Roadmap Progress</h3>
+            <h3 className="font-bold">Onboarding Status</h3>
             <p className="text-sm text-muted-foreground">
-              {stats.completedTasks} of {stats.totalTasks} tasks completed
+              {stats.generationStatus === "completed" ? "All set!" : stats.generationStatus === "generating" ? "Generating..." : "Pending"}
             </p>
           </div>
           <div className="w-full h-2 bg-accent rounded-full overflow-hidden">
@@ -108,12 +92,12 @@ export default function DashboardPage() {
             <MessageSquare className="w-6 h-6 text-violet-500" />
           </div>
           <div>
-            <h3 className="font-bold">AI Copilot Vibe</h3>
-            <p className="text-sm text-muted-foreground">{stats.chatSessions} active sessions</p>
+            <h3 className="font-bold">AI Copilot</h3>
+            <p className="text-sm text-muted-foreground">Get startup advice</p>
           </div>
           <Link href="/dashboard/chat">
             <Button variant="outline" size="sm" className="w-full rounded-full">
-              Continue Chat
+              Start Chat
             </Button>
           </Link>
         </div>
@@ -189,49 +173,6 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground mt-2">Get expert advice</p>
             </div>
           </Link>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold font-heading">Recent Activity</h2>
-        <div className="space-y-4">
-          {[
-            { 
-              icon: MessageSquare, 
-              text: "Started AI conversation about market validation", 
-              time: "2 hours ago",
-              color: "text-primary"
-            },
-            { 
-              icon: TrendingUp, 
-              text: "Generated startup roadmap with 7 milestones", 
-              time: "3 hours ago",
-              color: "text-violet-500"
-            },
-            { 
-              icon: Users, 
-              text: "Asked mentor about fundraising strategy", 
-              time: "1 day ago",
-              color: "text-emerald-500"
-            },
-            { 
-              icon: Zap, 
-              text: "AI Engine sync completed successfully", 
-              time: "2 days ago",
-              color: "text-emerald-500"
-            },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-accent/30 border border-border/50">
-              <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center">
-                <item.icon className={`w-4 h-4 ${item.color}`} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{item.text}</p>
-                <p className="text-xs text-muted-foreground">{item.time}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 

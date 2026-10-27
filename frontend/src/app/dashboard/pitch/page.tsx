@@ -26,9 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { offlineAI } from "@/lib/offline-ai"
-import { offlineStorage, PitchAnalysis } from "@/lib/offline-storage"
-import { useOffline } from "@/components/offline-provider"
+import { useAuth } from "@/components/auth-provider"
 import { getSectorDetails } from "@/lib/sector-utils"
 
 const PITCH_TYPES = [
@@ -130,7 +128,7 @@ const PITCH_TYPES = [
 ]
 
 export default function PitchPage() {
-  const { sector: activeSectorId } = useOffline()
+  const { sector: activeSectorId } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
 
   const [mode, setMode] = useState<"hub" | "guidelines" | "simulation" | "analyzer">("hub")
@@ -139,7 +137,7 @@ export default function PitchPage() {
   const [score, setScore] = useState(0)
   const [simStep, setSimStep] = useState(0)
   const [pitchContent, setPitchContent] = useState("")
-  const [analysis, setAnalysis] = useState<PitchAnalysis | null>(null)
+  const [analysis, setAnalysis] = useState<{ id: string; content: string; scores: { overall: number }; feedback: { strengths: string[]; weaknesses: string[]; suggestions: string[] } } | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isJoinedWaitlist, setIsJoinedWaitlist] = useState(false)
 

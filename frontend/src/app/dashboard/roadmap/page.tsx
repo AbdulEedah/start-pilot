@@ -1,172 +1,228 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { 
-  CheckCircle2, 
-  Circle, 
-  Flag, 
-  Rocket, 
-  Target, 
-  TrendingUp, 
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  CheckCircle2,
+  Circle,
+  Flag,
+  Rocket,
+  Target,
+  TrendingUp,
   FileText,
   Download,
   Plus,
-  Loader2
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
-import { offlineAI } from "@/lib/offline-ai"
-import { offlineStorage, Roadmap, RoadmapItem, StartupIdea } from "@/lib/offline-storage"
-import { useOffline } from "@/components/offline-provider"
-import { getSectorDetails } from "@/lib/sector-utils"
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useAuth } from "@/components/auth-provider";
+import { getSectorDetails } from "@/lib/sector-utils";
+import { roadmapsApi } from "@/lib/api/roadmaps";
+
+interface RoadmapItem {
+  id: string;
+  title: string;
+  description: string;
+  category: "product" | "marketing" | "funding" | "team" | "legal";
+  priority: "low" | "medium" | "high" | "critical";
+  timeframe: string;
+  status: "pending" | "in-progress" | "completed";
+  dependencies: string[];
+}
+
+interface Roadmap {
+  id: string;
+  startupId: string;
+  title: string;
+  items: RoadmapItem[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function RoadmapPage() {
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const { user, sector: activeSectorId } = useOffline()
-  const activeSector = getSectorDetails(activeSectorId)
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user, sector: activeSectorId } = useAuth();
+  const activeSector = getSectorDetails(activeSectorId);
 
   useEffect(() => {
-    loadRoadmap()
-  }, [activeSectorId])
+    loadRoadmap();
+  }, [activeSectorId]);
 
   const loadRoadmap = async () => {
     try {
-      const roadmaps = await offlineStorage.getAll<Roadmap>('roadmaps')
-      const userRoadmap = roadmaps.find(r => r.id === 'current')
-      
-      if (userRoadmap) {
-        setRoadmap(userRoadmap)
-      } else {
-        await generateRoadmap()
+      // Try to fetch from backend
+      const backendRoadmap = await roadmapsApi.getRoadmap();
+      if (backendRoadmap) {
+        const mapped: Roadmap = {
+          id: String(backendRoadmap.id),
+          startupId: String(backendRoadmap.user),
+          title: backendRoadmap.startup_name,
+          items: backendRoadmap.tasks.map((t: any) => ({
+            id: String(t.id),
+            title: t.title,
+            description: t.description,
+            category: "product" as const,
+            priority: "medium" as const,
+            timeframe: t.estimated_duration || "",
+            status:
+              t.status === "completed"
+                ? "completed"
+                : t.status === "in_progress"
+                  ? "in-progress"
+                  : "pending",
+            dependencies: [],
+          })),
+          createdAt: backendRoadmap.created_at,
+          updatedAt: backendRoadmap.updated_at,
+        };
+        setRoadmap(mapped);
       }
-    } catch (error) {
-      console.error('Failed to load roadmap:', error)
+    } catch {
+      // No roadmap yet, user needs to generate
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const generateRoadmap = async () => {
-    setIsGenerating(true)
-    
+    setIsGenerating(true);
+
     try {
-      const sectorDetails = getSectorDetails(activeSectorId)
-      const sampleIdea: StartupIdea = {
-        id: 'current',
-        title: sectorDetails.defaultIdea.title,
+      const sectorDetails = getSectorDetails(activeSectorId);
+      const result = await roadmapsApi.createRoadmap({
+        startup_name: sectorDetails.defaultIdea.title,
+        industry: sectorDetails.name,
+        stage: "idea",
         description: sectorDetails.defaultIdea.description,
-        sector: activeSectorId,
-        stage: 'idea',
-        validationScore: 82,
-        marketSize: sectorDetails.marketSize,
-        competition: sectorDetails.competitors,
-        techStack: ['Next.js', 'TypeScript', 'Tailwind CSS', 'Vector Engine'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
+        target_market: sectorDetails.targetAudience,
+        business_model: "SaaS / Platform",
+      });
 
-      const roadmapGeneration = await offlineAI.generateRoadmap(sampleIdea)
-      
-      const newRoadmap: Roadmap = {
-        id: 'current',
-        startupId: 'current',
-        title: `${sectorDetails.name} Launch Roadmap`,
-        items: roadmapGeneration.items,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
+      const mapped: Roadmap = {
+        id: String(result.id),
+        startupId: String(result.user),
+        title: result.startup_name,
+        items: result.tasks.map((t: any) => ({
+          id: String(t.id),
+          title: t.title,
+          description: t.description,
+          category: "product" as const,
+          priority: "medium" as const,
+          timeframe: t.estimated_duration || "",
+          status:
+            t.status === "completed"
+              ? "completed"
+              : t.status === "in_progress"
+                ? "in-progress"
+                : "pending",
+          dependencies: [],
+        })),
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+      };
 
-      await offlineStorage.save('roadmaps', newRoadmap)
-      setRoadmap(newRoadmap)
-      
+      setRoadmap(mapped);
+
       toast.success(`${sectorDetails.name} Roadmap generated!`, {
-        description: `Customized roadmap for ${sectorDetails.name} is ready`
-      })
-    } catch (error) {
-      console.error('Failed to generate roadmap:', error)
+        description: `Customized roadmap for ${sectorDetails.name} is ready`,
+      });
+    } catch (error: any) {
+      console.error("Failed to generate roadmap:", error);
       toast.error("Failed to generate roadmap", {
-        description: "Please try again"
-      })
+        description: "Please try again",
+      });
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
-  const updateItemStatus = async (itemId: string, newStatus: 'pending' | 'in-progress' | 'completed') => {
-    if (!roadmap) return
+  const updateItemStatus = async (
+    itemId: string,
+    newStatus: "pending" | "in-progress" | "completed",
+  ) => {
+    if (!roadmap) return;
 
-    const updatedItems = roadmap.items.map(item => 
-      item.id === itemId ? { ...item, status: newStatus } : item
-    )
+    const updatedItems = roadmap.items.map((item) =>
+      item.id === itemId ? { ...item, status: newStatus } : item,
+    );
 
     const updatedRoadmap: Roadmap = {
       ...roadmap,
       items: updatedItems,
-      updatedAt: new Date().toISOString()
-    }
+      updatedAt: new Date().toISOString(),
+    };
 
     try {
-      await offlineStorage.save('roadmaps', updatedRoadmap)
-      setRoadmap(updatedRoadmap)
-      
+      setRoadmap(updatedRoadmap);
       toast.success("Progress updated!", {
-        description: `Task marked as ${newStatus}`
-      })
+        description: `Task marked as ${newStatus}`,
+      });
     } catch (error) {
-      console.error('Failed to update roadmap:', error)
-      toast.error("Failed to update progress")
+      console.error("Failed to update roadmap:", error);
+      toast.error("Failed to update progress");
     }
-  }
+  };
 
   const handleExport = () => {
     toast.promise(new Promise((resolve) => setTimeout(resolve, 2000)), {
-      loading: 'Generating your Startup Blueprint PDF...',
-      success: 'Blueprint Downloaded Successfully!',
-      error: 'Failed to generate PDF',
-    })
-  }
+      loading: "Generating your Startup Blueprint PDF...",
+      success: "Blueprint Downloaded Successfully!",
+      error: "Failed to generate PDF",
+    });
+  };
 
   const groupItemsByCategory = (items: RoadmapItem[]) => {
-    const groups: { [key: string]: RoadmapItem[] } = {}
-    items.forEach(item => {
+    const groups: { [key: string]: RoadmapItem[] } = {};
+    items.forEach((item) => {
       if (!groups[item.category]) {
-        groups[item.category] = []
+        groups[item.category] = [];
       }
-      groups[item.category].push(item)
-    })
-    return groups
-  }
+      groups[item.category].push(item);
+    });
+    return groups;
+  };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'product': return <Rocket className="w-4 h-4" />
-      case 'marketing': return <TrendingUp className="w-4 h-4" />
-      case 'funding': return <Target className="w-4 h-4" />
-      case 'team': return <Flag className="w-4 h-4" />
-      case 'legal': return <FileText className="w-4 h-4" />
-      default: return <Circle className="w-4 h-4" />
+      case "product":
+        return <Rocket className="w-4 h-4" />;
+      case "marketing":
+        return <TrendingUp className="w-4 h-4" />;
+      case "funding":
+        return <Target className="w-4 h-4" />;
+      case "team":
+        return <Flag className="w-4 h-4" />;
+      case "legal":
+        return <FileText className="w-4 h-4" />;
+      default:
+        return <Circle className="w-4 h-4" />;
     }
-  }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'text-red-500 bg-red-500/10 border-red-500/20'
-      case 'high': return 'text-orange-500 bg-orange-500/10 border-orange-500/20'
-      case 'medium': return 'text-blue-500 bg-blue-500/10 border-blue-500/20'
-      case 'low': return 'text-gray-500 bg-gray-500/10 border-gray-500/20'
-      default: return 'text-gray-500 bg-gray-500/10 border-gray-500/20'
+      case "critical":
+        return "text-red-500 bg-red-500/10 border-red-500/20";
+      case "high":
+        return "text-orange-500 bg-orange-500/10 border-orange-500/20";
+      case "medium":
+        return "text-blue-500 bg-blue-500/10 border-blue-500/20";
+      case "low":
+        return "text-gray-500 bg-gray-500/10 border-gray-500/20";
+      default:
+        return "text-gray-500 bg-gray-500/10 border-gray-500/20";
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   if (!roadmap) {
@@ -177,13 +233,16 @@ export default function RoadmapPage() {
             <Rocket className="w-8 h-8 text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold font-heading">Generate Your Startup Roadmap</h2>
+            <h2 className="text-2xl font-bold font-heading">
+              Generate Your Startup Roadmap
+            </h2>
             <p className="text-muted-foreground max-w-md">
-              Let our AI create a personalized roadmap based on your startup idea and goals.
+              Let our AI create a personalized roadmap based on your startup
+              idea and goals.
             </p>
           </div>
-          <Button 
-            onClick={generateRoadmap} 
+          <Button
+            onClick={generateRoadmap}
             disabled={isGenerating}
             className="rounded-full shadow-lg shadow-primary/20"
           >
@@ -201,10 +260,10 @@ export default function RoadmapPage() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
-  const groupedItems = groupItemsByCategory(roadmap.items)
+  const groupedItems = groupItemsByCategory(roadmap.items);
 
   return (
     <div className="p-8 space-y-8 overflow-y-auto">
@@ -213,12 +272,14 @@ export default function RoadmapPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold font-heading">Startup Roadmap</h1>
           </div>
-          <p className="text-muted-foreground">Your step-by-step path from idea to scale.</p>
+          <p className="text-muted-foreground">
+            Your step-by-step path from idea to scale.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button 
+          <Button
             variant="outline"
-            onClick={generateRoadmap} 
+            onClick={generateRoadmap}
             disabled={isGenerating}
             className="rounded-full"
           >
@@ -229,7 +290,10 @@ export default function RoadmapPage() {
             )}
             Regenerate
           </Button>
-          <Button onClick={handleExport} className="rounded-full shadow-lg shadow-primary/20">
+          <Button
+            onClick={handleExport}
+            className="rounded-full shadow-lg shadow-primary/20"
+          >
             <Download className="mr-2 h-4 w-4" />
             Export Blueprint
           </Button>
@@ -246,20 +310,28 @@ export default function RoadmapPage() {
           >
             <div className="flex items-center gap-3 mb-6">
               {getCategoryIcon(category)}
-              <h2 className="text-xl font-bold font-heading capitalize">{category}</h2>
+              <h2 className="text-xl font-bold font-heading capitalize">
+                {category}
+              </h2>
               <div className="text-xs text-muted-foreground">
-                {items.filter(i => i.status === 'completed').length}/{items.length} completed
+                {
+                  items.filter((i: RoadmapItem) => i.status === "completed")
+                    .length
+                }
+                /{items.length} completed
               </div>
             </div>
 
             <div className="grid gap-4">
-              {items.map((item) => (
+              {items.map((item: RoadmapItem) => (
                 <div
                   key={item.id}
                   className={`p-4 rounded-xl border transition-all ${
-                    item.status === 'completed' ? 'bg-primary/5 border-primary/20' :
-                    item.status === 'in-progress' ? 'bg-amber-500/5 border-amber-500/20' :
-                    'bg-accent/50 border-border/50'
+                    item.status === "completed"
+                      ? "bg-primary/5 border-primary/20"
+                      : item.status === "in-progress"
+                        ? "bg-amber-500/5 border-amber-500/20"
+                        : "bg-accent/50 border-border/50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -270,18 +342,24 @@ export default function RoadmapPage() {
                           size="icon"
                           className="w-6 h-6"
                           onClick={() => {
-                            const nextStatus = item.status === 'pending' ? 'in-progress' :
-                                             item.status === 'in-progress' ? 'completed' : 'pending'
-                            updateItemStatus(item.id, nextStatus)
+                            const nextStatus =
+                              item.status === "pending"
+                                ? "in-progress"
+                                : item.status === "in-progress"
+                                  ? "completed"
+                                  : "pending";
+                            updateItemStatus(item.id, nextStatus);
                           }}
                         >
-                          {item.status === 'completed' ? (
+                          {item.status === "completed" ? (
                             <CheckCircle2 className="w-4 h-4 text-primary" />
                           ) : (
                             <Circle className="w-4 h-4" />
                           )}
                         </Button>
-                        <h3 className={`font-medium ${item.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                        <h3
+                          className={`font-medium ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}
+                        >
                           {item.title}
                         </h3>
                       </div>
@@ -289,7 +367,9 @@ export default function RoadmapPage() {
                         {item.description}
                       </p>
                       <div className="flex items-center gap-2 pl-9">
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(item.priority)}`}>
+                        <div
+                          className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(item.priority)}`}
+                        >
                           {item.priority}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -311,25 +391,37 @@ export default function RoadmapPage() {
           <div>
             <h3 className="font-bold text-primary">Overall Progress</h3>
             <p className="text-sm text-muted-foreground">
-              {roadmap.items.filter(i => i.status === 'completed').length} of {roadmap.items.length} tasks completed
+              {
+                roadmap.items.filter(
+                  (i: RoadmapItem) => i.status === "completed",
+                ).length
+              }{" "}
+              of {roadmap.items.length} tasks completed
             </p>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-primary">
-              {Math.round((roadmap.items.filter(i => i.status === 'completed').length / roadmap.items.length) * 100)}%
+              {Math.round(
+                (roadmap.items.filter(
+                  (i: RoadmapItem) => i.status === "completed",
+                ).length /
+                  roadmap.items.length) *
+                  100,
+              )}
+              %
             </div>
             <div className="text-xs text-muted-foreground">Complete</div>
           </div>
         </div>
         <div className="mt-4 w-full h-2 bg-accent rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-500"
-            style={{ 
-              width: `${(roadmap.items.filter(i => i.status === 'completed').length / roadmap.items.length) * 100}%` 
+            style={{
+              width: `${(roadmap.items.filter((i: RoadmapItem) => i.status === "completed").length / roadmap.items.length) * 100}%`,
             }}
           />
         </div>
       </div>
     </div>
-  )
+  );
 }

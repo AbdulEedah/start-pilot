@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useOffline } from "@/components/offline-provider"
+import { useAuth } from "@/components/auth-provider"
 import { getSectorDetails } from "@/lib/sector-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,16 +20,16 @@ import {
 import { toast } from "sonner"
 
 export default function SettingsPage() {
-  const { user, sector: activeSectorId, updateUser } = useOffline()
+  const { user, sector: activeSectorId, updateUser } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
 
-  const [name, setName] = useState(user?.name || "")
+  const [name, setName] = useState(user?.full_name || "")
   const [email, setEmail] = useState(user?.email || "")
   const [isSaved, setIsSaved] = useState(false)
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
-    updateUser({ name, email })
+    updateUser({ full_name: name, email })
     setIsSaved(true)
     toast.success("Profile updated successfully")
     setTimeout(() => setIsSaved(false), 3000)

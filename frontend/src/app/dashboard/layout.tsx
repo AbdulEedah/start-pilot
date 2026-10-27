@@ -22,7 +22,7 @@ import {
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useOffline } from "@/components/offline-provider"
+import { useAuth } from "@/components/auth-provider"
 import { getSectorDetails } from "@/lib/sector-utils"
 import { Button } from "@/components/ui/button"
 import { motion, AnimatePresence } from "framer-motion"
@@ -33,7 +33,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { user, sector: activeSectorId, logout } = useOffline()
+  const { user, sector: activeSectorId, logout } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -103,7 +103,7 @@ export default function DashboardLayout({
             {/* User & Sector Header */}
             <div className="p-4 rounded-2xl bg-card border border-border/80 mb-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold">{user?.name || 'Founder'}</p>
+                <p className="text-sm font-bold">{user?.full_name || 'Founder'}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <Link 
@@ -197,7 +197,7 @@ export default function DashboardLayout({
           
           {/* User Info */}
           <div className="px-2">
-            <p className="text-xs font-medium text-foreground">{user?.name}</p>
+            <p className="text-xs font-medium text-foreground">{user?.full_name}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
 

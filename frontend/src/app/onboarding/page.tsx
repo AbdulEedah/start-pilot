@@ -1,26 +1,154 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectorSelection } from "@/components/onboarding/sector-selection"
 import { BackgroundForm } from "@/components/onboarding/background-form"
 import { Rocket } from "lucide-react"
 import { setStoredSector } from "@/lib/sector-utils"
-import { useOffline } from "@/components/offline-provider"
+import { useAuth } from "@/components/auth-provider"
+import { savePendingOnboarding, getPendingOnboarding, clearPendingOnboarding } from "@/lib/onboarding-storage"
+import { profilesApi } from "@/lib/api/profiles"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import type { PendingOnboardingData } from "@/lib/onboarding-storage"
 
 export default function OnboardingPage() {
   const [step, setStep] = useState<"sector" | "background">("sector")
-  const { changeSector, updateUser } = useOffline()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { isAuthenticated, user } = useAuth()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     sector: "",
-    background: {},
+    background: {} as Record<string, string>,
   })
 
-  const handleSectorSelect = (sector: string) => {
+  const submitPendingOnboarding = useCallback(async (pending: PendingOnboardingData) => {
+    try {
+      const profilePayload = {
+        sector: pending.sector,
+        background_story: pending.background.story,
+        problem: pending.background.problem,
+        country: pending.background.country,
+        state: pending.background.state,
+        city: pending.background.city,
+        existing_experience: pending.background.experience,
+        key_skills: pending.background.skills.split(",").map((s: string) => s.trim()).filter(Boolean),
+        available_resources: {
+          financial: { capital: 0, savings: 0 },
+          human: { team_size: 1, cofounders: 0 },
+          assets: { office_space: false, equipment: false },
+          time: { hours_per_week: 40 },
+        },
+        team_status: "solo",
+        time_commitment: "full",
+      }
+
+      await profilesApi.patchProfile(profilePayload)
+      await profilesApi.completeOnboarding()
+
+      clearPendingOnboarding()
+
+      toast.success("Onboarding complete!", {
+        description: "Your validation report and roadmap are being generated.",
+      })
+
+      router.push("/dashboard")
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to save onboarding data. Please try again."
+      toast.error("Onboarding failed", { description: message })
+    }
+  }, [router])
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const pending = getPendingOnboarding()
+      if (pending) {
+        submitPendingOnboarding(pending)
+      }
+    }
+  }, [isAuthenticated, user, submitPendingOnboarding])
+
+  const redirectToRegister = () => {
+    toast.info("Please create an account to continue", {
+      description: "Your onboarding data has been saved. Register to complete setup.",
+    })
+    router.push("/register")
+  }
+
+  const handleSectorSelect = async (sector: string) => {
     setStoredSector(sector)
-    changeSector(sector)
-    setFormData({ ...formData, sector })
-    setStep("background")
+    setFormData((prev) => ({ ...prev, sector }))
+
+    if (isAuthenticated) {
+      try {
+        await profilesApi.patchProfile({ sector })
+      } catch (error) {
+        console.error("Failed to save sector to backend:", error)
+      }
+      setStep("background")
+    } else {
+      savePendingOnboarding({ sector, background: formData.background })
+      setStep("background")
+    }
+  }
+
+  const handleBackgroundSubmit = async (data: Record<string, string>) => {
+    setIsSubmitting(true)
+    setFormData((prev) => ({ ...prev, background: data }))
+
+    const onboardingData = {
+      sector: formData.sector,
+      background: data,
+    }
+
+    if (!isAuthenticated) {
+      savePendingOnboarding(onboardingData)
+      redirectToRegister()
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
+      const profilePayload = {
+        sector: onboardingData.sector,
+        background_story: data.story,
+        problem: data.problem,
+        country: data.country,
+        state: data.state,
+        city: data.city,
+        existing_experience: data.experience,
+        key_skills: data.skills.split(",").map((s: string) => s.trim()).filter(Boolean),
+        available_resources: {
+          financial: { capital: 0, savings: 0 },
+          human: { team_size: 1, cofounders: 0 },
+          assets: { office_space: false, equipment: false },
+          time: { hours_per_week: 40 },
+        },
+        team_status: "solo",
+        time_commitment: "full",
+      }
+
+      await profilesApi.patchProfile(profilePayload)
+      await profilesApi.completeOnboarding()
+
+      toast.success("Onboarding complete!", {
+        description: "Your validation report and roadmap are being generated.",
+      })
+
+      router.push("/dashboard")
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to save onboarding data. Please try again."
+      toast.error("Onboarding failed", { description: message })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -78,14 +206,8 @@ export default function OnboardingPage() {
               </div>
               <BackgroundForm 
                 onBack={() => setStep("sector")} 
-                onSubmit={(data) => {
-                  if (formData.sector) {
-                    setStoredSector(formData.sector)
-                    changeSector(formData.sector)
-                    updateUser({ onboardingCompleted: true })
-                  }
-                  window.location.href = "/dashboard/chat"
-                }}
+                onSubmit={handleBackgroundSubmit}
+                isSubmitting={isSubmitting}
               />
             </motion.div>
           )}

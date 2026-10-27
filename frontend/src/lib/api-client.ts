@@ -1,0 +1,221 @@
+/**
+ * API Client for StartPilot Backend
+ *
+ * Handles JWT authentication, token refresh, and HTTP requests
+ * to the Django REST Framework backend.
+ */
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost";
+
+interface TokenPair {
+  access: string;
+  refresh: string;
+}
+
+interface ApiError {
+  status: number;
+  data: Record<string, any>;
+}
+
+class ApiClient {
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private refreshPromise: Promise<boolean> | null = null;
+
+  constructor() {
+    // Hydrate tokens from localStorage on client side
+    if (typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem("access_token");
+      this.refreshToken = localStorage.getItem("refresh_token");
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Token Management
+  // ──────────────────────────────────────────────
+
+  setTokens(tokens: TokenPair): void {
+    this.accessToken = tokens.access;
+    this.refreshToken = tokens.refresh;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("access_token", tokens.access);
+      localStorage.setItem("refresh_token", tokens.refresh);
+    }
+  }
+
+  clearTokens(): void {
+    this.accessToken = null;
+    this.refreshToken = null;
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+    }
+  }
+
+  getAccessToken(): string | null {
+    return this.accessToken;
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.accessToken;
+  }
+
+  // ──────────────────────────────────────────────
+  // Token Refresh
+  // ──────────────────────────────────────────────
+
+  private async attemptTokenRefresh(): Promise<boolean> {
+    if (!this.refreshToken) return false;
+
+    // Deduplicate concurrent refresh attempts
+    if (this.refreshPromise) return this.refreshPromise;
+
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/auth/token/refresh/`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh: this.refreshToken }),
+          },
+        );
+
+        if (!response.ok) {
+          this.clearTokens();
+          return false;
+        }
+
+        const data = await response.json();
+        this.setTokens({
+          access: data.access,
+          refresh: data.refresh || this.refreshToken!,
+        });
+        return true;
+      } catch {
+        this.clearTokens();
+        return false;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  // ──────────────────────────────────────────────
+  // Core Request Method
+  // ──────────────────────────────────────────────
+
+  private async request<T>(
+    method: string,
+    path: string,
+    options: {
+      body?: any;
+      params?: Record<string, string>;
+      authenticated?: boolean;
+      formData?: boolean;
+    } = {},
+  ): Promise<T> {
+    const { body, params, authenticated = true, formData = false } = options;
+
+    const url = new URL(`${API_BASE_URL}${path}`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const headers: Record<string, string> = {};
+
+    if (!formData) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    if (authenticated && this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    let response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: formData ? body : body ? JSON.stringify(body) : undefined,
+    });
+
+    // If 401, attempt token refresh and retry once
+    if (response.status === 401 && authenticated && this.refreshToken) {
+      const refreshed = await this.attemptTokenRefresh();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${this.accessToken}`;
+        response = await fetch(url.toString(), {
+          method,
+          headers,
+          body: formData ? body : body ? JSON.stringify(body) : undefined,
+        });
+      }
+    }
+
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const error: ApiError = {
+        status: response.status,
+        data,
+      };
+      throw error;
+    }
+
+    return data as T;
+  }
+
+  // ──────────────────────────────────────────────
+  // HTTP Verb Shortcuts
+  // ──────────────────────────────────────────────
+
+  get<T>(
+    path: string,
+    params?: Record<string, string>,
+    authenticated = true,
+  ): Promise<T> {
+    return this.request<T>("GET", path, { params, authenticated });
+  }
+
+  post<T>(
+    path: string,
+    body?: any,
+    authenticated = true,
+    formData = false,
+  ): Promise<T> {
+    return this.request<T>("POST", path, { body, authenticated, formData });
+  }
+
+  put<T>(
+    path: string,
+    body?: any,
+    authenticated = true,
+    formData = false,
+  ): Promise<T> {
+    return this.request<T>("PUT", path, { body, authenticated, formData });
+  }
+
+  patch<T>(
+    path: string,
+    body?: any,
+    authenticated = true,
+    formData = false,
+  ): Promise<T> {
+    return this.request<T>("PATCH", path, { body, authenticated, formData });
+  }
+
+  delete<T>(path: string, authenticated = true): Promise<T> {
+    return this.request<T>("DELETE", path, { authenticated });
+  }
+}
+
+export const apiClient = new ApiClient();
+export type { TokenPair, ApiError };

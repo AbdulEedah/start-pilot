@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form"
 import { useRouter } from "next/navigation"
 import * as z from "zod"
 import { toast } from "sonner"
-import { User, Mail, Phone, Lock, Loader2, CheckCircle2 } from "lucide-react"
+import { User, Mail, Lock, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -19,58 +19,57 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useOffline } from "@/components/offline-provider"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useAuth } from "@/components/auth-provider"
 
 const registerSchema = z.object({
-  fullName: z.string().min(2, "Full Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone Number must be at least 10 digits"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Za-z]/, "Password must contain at least one letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
+  agreeToTerms: z.boolean().refine((val) => val === true, {
+    message: "You must agree to the terms and conditions",
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Passwords do not match",
   path: ["confirmPassword"],
 })
 
 export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const { register } = useOffline()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const { register } = useAuth()
   const router = useRouter()
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      fullName: "",
+      name: "",
       email: "",
-      phone: "",
       password: "",
       confirmPassword: "",
+      agreeToTerms: false,
     },
   })
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsLoading(true)
-    
+
     try {
-      const success = await register(values.email, values.password, values.fullName)
-      
-      if (success) {
-        setIsSuccess(true)
-        toast.success("Account created!", {
-          description: "Welcome to Start Pilot! Let's get you started.",
-        })
-      } else {
-        toast.error("Registration failed", {
-          description: "User with this email already exists",
-        })
-      }
+      await register(values.email, values.password, values.name)
+      toast.success("Account created!", {
+        description: "Welcome to StartPilot. Let's get started!",
+      })
+      router.push("/onboarding")
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "An error occurred during registration."
       toast.error("Registration failed", {
-        description: "An error occurred during registration",
+        description: message,
       })
     } finally {
       setIsLoading(false)
@@ -85,10 +84,10 @@ export function RegisterForm() {
         </div>
         <h2 className="text-2xl font-bold font-heading">Welcome to Start Pilot!</h2>
         <p className="text-muted-foreground">
-          Your account has been created successfully. Let's get you started on your startup journey.
+          Your account has been created successfully. Let&apos;s get you started on your startup journey.
         </p>
-        <Button 
-          className="w-full" 
+        <Button
+          className="w-full"
           onClick={() => router.push("/onboarding")}
         >
           Continue to Onboarding
@@ -105,7 +104,7 @@ export function RegisterForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="fullName"
+          name="name"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Full Name</FormLabel>
@@ -120,41 +119,22 @@ export function RegisterForm() {
           )}
         />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="name@example.com" className="pl-9" {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="+1 (555) 000-0000" className="pl-9" {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="name@example.com" className="pl-9" {...field} />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -165,7 +145,25 @@ export function RegisterForm() {
               <FormControl>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input type="password" placeholder="••••••••" className="pl-9" {...field} />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pl-9 pr-10"
+                    {...field}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full w-10 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
                 </div>
               </FormControl>
               <FormMessage />
@@ -182,11 +180,56 @@ export function RegisterForm() {
               <FormControl>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input type="password" placeholder="••••••••" className="pl-9" {...field} />
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pl-9 pr-10"
+                    {...field}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full w-10 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
                 </div>
               </FormControl>
               <FormMessage />
             </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="agreeToTerms"
+          render={({ field }) => (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="agreeToTerms"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+              <label
+                htmlFor="agreeToTerms"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                I agree to the{" "}
+                <Link href="/terms" className="text-primary hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
           )}
         />
 
