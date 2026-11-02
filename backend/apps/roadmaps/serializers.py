@@ -49,12 +49,19 @@ class RoadmapTaskSerializer(serializers.ModelSerializer):
 class RoadmapTaskUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for PATCH /api/v1/roadmap/tasks/{id}/.
-    Only allows updating is_completed and user_notes.
+    Allows updating is_completed, status string, and user_notes.
     """
+
+    status = serializers.CharField(required=False, write_only=True)
 
     class Meta:
         model = RoadmapTask
-        fields = ["is_completed", "user_notes"]
+        fields = ["is_completed", "status", "user_notes"]
+
+    def validate(self, attrs):
+        if "status" in attrs:
+            attrs["is_completed"] = attrs.pop("status") == "completed"
+        return attrs
 
 
 class RoadmapCategorySerializer(serializers.ModelSerializer):
@@ -70,20 +77,57 @@ class RoadmapCategorySerializer(serializers.ModelSerializer):
 
 class RoadmapSerializer(serializers.ModelSerializer):
     """
-    Full roadmap serializer with nested categories and tasks.
-    Used for GET /api/v1/roadmap/.
+    Full roadmap serializer with nested categories and flat tasks.
+    Used for GET /api/v1/roadmap/ and POST /api/v1/roadmap/.
     """
 
     categories = RoadmapCategorySerializer(many=True, read_only=True)
     profile_id = serializers.IntegerField(source="profile.id", read_only=True)
+    startup_name = serializers.CharField(source="profile.startup_name", read_only=True)
+    industry = serializers.CharField(source="profile.industry", read_only=True)
+    stage = serializers.CharField(source="profile.stage", read_only=True)
+    tasks = serializers.SerializerMethodField()
 
     class Meta:
         model = Roadmap
         fields = [
             "id",
             "profile_id",
+            "startup_name",
+            "industry",
+            "stage",
             "total_weeks",
             "generated_at",
+            "created_at",
+            "updated_at",
             "categories",
+            "tasks",
         ]
         read_only_fields = fields
+
+    def get_tasks(self, obj):
+        tasks_list = []
+        for cat in obj.categories.all():
+            for task in cat.tasks.all():
+                tasks_list.append({
+                    "id": task.id,
+                    "title": task.title,
+                    "description": task.description,
+                    "category": cat.name.lower(),
+                    "phase": cat.name,
+                    "priority": task.priority,
+                    "order": task.order,
+                    "status": "completed" if task.is_completed else "pending",
+                    "estimated_duration": (
+                        f"Week {task.start_week}-{task.end_week}"
+                        if task.start_week != task.end_week
+                        else f"Week {task.start_week}"
+                    ),
+                    "start_week": task.start_week,
+                    "end_week": task.end_week,
+                    "is_completed": task.is_completed,
+                    "user_notes": task.user_notes,
+                    "created_at": task.created_at.isoformat() if task.created_at else None,
+                    "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+                })
+        return tasks_list

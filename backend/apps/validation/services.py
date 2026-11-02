@@ -45,7 +45,6 @@ def profile_to_dict(profile) -> dict:
     }
 
 
-@transaction.atomic
 def generate_validation_report(profile) -> ValidationReport:
     """
     Call the AI provider to generate a validation report for the given
@@ -74,9 +73,9 @@ def generate_validation_report(profile) -> ValidationReport:
         raise AIGenerationError(detail=f"Validation report generation failed: {exc}") from exc
 
     # Delete existing report before creating a new one (replace semantics)
-    ValidationReport.objects.filter(profile=profile).delete()
-
-    report = ValidationReport.objects.create(
+    with transaction.atomic():
+        ValidationReport.objects.filter(profile=profile).delete()
+        report = ValidationReport.objects.create(
         profile=profile,
         score=int(report_data["score"]),
         executive_summary=report_data["executive_summary"],
@@ -141,3 +140,4 @@ def report_to_dict(report: ValidationReport) -> dict:
         "sector_considerations": report.sector_considerations,
         "action_plan": report.action_plan,
     }
+

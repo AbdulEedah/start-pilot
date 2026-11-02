@@ -254,6 +254,7 @@ GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET", default="")
 # AI Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+GEMINI_MODEL = config("GEMINI_MODEL", default="gemini-3.5-flash-lite")
 AI_PROVIDER = config("AI_PROVIDER", default="gemini")
 
 # ─────────────────────────────────────────────────────────────────────────────

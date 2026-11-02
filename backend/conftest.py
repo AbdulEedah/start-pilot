@@ -32,11 +32,15 @@ def use_dummy_cache(settings):
     Replace Redis cache with the in-memory dummy backend for all tests.
     Prevents tests from requiring a running Redis instance.
     """
+    from django.core.cache import cache
     settings.CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

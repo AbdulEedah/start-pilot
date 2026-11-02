@@ -30,5 +30,5 @@ export type { Message, Conversation, SendMessagePayload, SendMessageResponse } f
 export { notificationsApi } from "./notifications";
 export type { Notification } from "./notifications";
 
-export { apiClient } from "@/lib/api-client";
-export type { TokenPair, ApiError } from "@/lib/api-client";
+export { apiClient, ApiError } from "@/lib/api-client";
+export type { TokenPair } from "@/lib/api-client";

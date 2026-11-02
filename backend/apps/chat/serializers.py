@@ -25,20 +25,35 @@ class ConversationSerializer(serializers.ModelSerializer):
 class SendMessageSerializer(serializers.Serializer):
     """
     Serializer for POST /api/v1/chat/messages/.
-    Accepts the user's message text.
+    Accepts the user's message text as either 'message' or 'content'.
     """
 
     message = serializers.CharField(
         max_length=4000,
+        required=False,
         help_text="The message to send to the AI Copilot.",
     )
+    content = serializers.CharField(
+        max_length=4000,
+        required=False,
+        help_text="Alias for message.",
+    )
+    conversation_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+    )
+    context = serializers.DictField(
+        required=False,
+        allow_null=True,
+    )
 
-    def validate_message(self, value: str) -> str:
-        """Strip whitespace and ensure the message is not empty."""
-        stripped = value.strip()
-        if not stripped:
-            raise serializers.ValidationError("Message cannot be empty.")
-        return stripped
+    def validate(self, attrs):
+        """Allow either 'message' or 'content'."""
+        msg = attrs.get("message") or attrs.get("content")
+        if not msg or not msg.strip():
+            raise serializers.ValidationError({"message": "Message cannot be empty."})
+        attrs["message"] = msg.strip()
+        return attrs
 
 
 class ConversationWithMessagesSerializer(serializers.ModelSerializer):

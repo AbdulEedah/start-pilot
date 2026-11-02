@@ -50,7 +50,7 @@ class TestRegisterView:
             format="json",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["email"] == "newuser@example.com"
+        assert response.data["user"]["email"] == "newuser@example.com"
 
     def test_registration_duplicate_email_fails(self, api_client):
         UserFactory(email="taken@example.com")

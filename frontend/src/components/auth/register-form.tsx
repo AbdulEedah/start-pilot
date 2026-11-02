@@ -63,11 +63,37 @@ export function RegisterForm() {
         description: "Welcome to StartPilot. Let's get started!",
       })
       router.push("/onboarding")
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Registration error details:", error?.data || error)
       const message =
         error instanceof Error
           ? error.message
           : "An error occurred during registration."
+
+      // Set field-specific validation errors from the backend if available
+      if (error?.data && typeof error.data === "object") {
+        if (error.data.email) {
+          form.setError("email", {
+            message: Array.isArray(error.data.email) ? error.data.email.join(" ") : error.data.email,
+          })
+        }
+        if (error.data.password) {
+          form.setError("password", {
+            message: Array.isArray(error.data.password) ? error.data.password.join(" ") : error.data.password,
+          })
+        }
+        if (error.data.full_name) {
+          form.setError("name", {
+            message: Array.isArray(error.data.full_name) ? error.data.full_name.join(" ") : error.data.full_name,
+          })
+        }
+        if (error.data.password_confirm) {
+          form.setError("confirmPassword", {
+            message: Array.isArray(error.data.password_confirm) ? error.data.password_confirm.join(" ") : error.data.password_confirm,
+          })
+        }
+      }
+
       toast.error("Registration failed", {
         description: message,
       })

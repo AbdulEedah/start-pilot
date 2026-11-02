@@ -3,6 +3,7 @@ Views for the roadmaps app.
 
 Endpoints:
     GET   /api/v1/roadmap/              – Full roadmap with categories and tasks.
+    POST  /api/v1/roadmap/              – Generate or re-generate the startup roadmap.
     PATCH /api/v1/roadmap/tasks/{id}/   – Update task completion and notes.
 """
 import logging
@@ -28,11 +29,8 @@ ROADMAP_CACHE_TTL = 86400  # 24 hours
 
 class RoadmapView(APIView):
     """
-    GET /api/v1/roadmap/
-
-    Returns the full roadmap with all categories and tasks.
-    The roadmap is cached for 24 hours and invalidated when the profile
-    is updated or re-generation is triggered.
+    GET  /api/v1/roadmap/ – Returns the full roadmap with all categories and tasks.
+    POST /api/v1/roadmap/ – Generate or re-generate the roadmap.
     """
 
     permission_classes = [IsAuthenticated]
@@ -61,6 +59,66 @@ class RoadmapView(APIView):
         data = RoadmapSerializer(roadmap).data
         cache.set(cache_key, data, timeout=ROADMAP_CACHE_TTL)
         return Response(data)
+
+    @extend_schema(
+        responses={201: RoadmapSerializer},
+        summary="Generate or re-generate the startup roadmap",
+    )
+    def post(self, request, *args, **kwargs):
+        """Generate or re-generate the roadmap for the user's startup."""
+        from apps.profiles.models import SECTOR_CHOICES, DEFAULT_AVAILABLE_RESOURCES
+        from apps.validation.models import ValidationReport
+        from apps.validation.services import generate_validation_report
+
+        profile = StartupProfile.objects.filter(user=request.user).first()
+        industry = (request.data.get("industry") or request.data.get("sector") or "").lower().strip()
+        startup_name = request.data.get("startup_name")
+        description = request.data.get("description")
+
+        def resolve_sector(name):
+            if not name:
+                return "technology"
+            for code, label in SECTOR_CHOICES:
+                if code == name or code in name or label.lower() in name:
+                    return code
+            return "technology"
+
+        if not profile:
+            profile = StartupProfile.objects.create(
+                user=request.user,
+                sector=resolve_sector(industry),
+                background_story=startup_name or "Startup idea",
+                problem=description or "Solving key customer challenges",
+                country="Global",
+                city="Online",
+                team_status="solo",
+                time_commitment="full",
+                available_resources=DEFAULT_AVAILABLE_RESOURCES,
+            )
+        else:
+            changed = False
+            if industry:
+                new_sec = resolve_sector(industry)
+                if profile.sector != new_sec:
+                    profile.sector = new_sec
+                    changed = True
+            if startup_name and (not profile.background_story or profile.background_story == "Startup idea"):
+                profile.background_story = startup_name
+                changed = True
+            if description and (not profile.problem or profile.problem == "Solving key customer challenges"):
+                profile.problem = description
+                changed = True
+            if changed:
+                profile.save()
+
+        report = ValidationReport.objects.filter(profile=profile).first()
+        if not report:
+            report = generate_validation_report(profile)
+
+        roadmap = services.generate_roadmap(profile, report)
+        cache.delete(f"roadmap:user:{request.user.id}")
+        data = RoadmapSerializer(roadmap).data
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class RoadmapTaskUpdateView(APIView):

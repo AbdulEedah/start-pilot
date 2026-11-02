@@ -53,7 +53,10 @@ def register_user(email: str, password: str, full_name: str) -> User:
     # Dispatch welcome email asynchronously – import here to avoid circular deps
     from apps.notifications.tasks import send_welcome_email_task
 
-    send_welcome_email_task.delay(user.id)
+    try:
+        send_welcome_email_task.delay(user.id)
+    except Exception as exc:
+        logger.warning("Could not dispatch welcome email task: %s", exc)
     return user
 
 
@@ -162,7 +165,10 @@ def _find_or_create_google_user(
 
     from apps.notifications.tasks import send_welcome_email_task
 
-    send_welcome_email_task.delay(user.id)
+    try:
+        send_welcome_email_task.delay(user.id)
+    except Exception as exc:
+        logger.warning("Could not dispatch welcome email task: %s", exc)
     return user
 
 

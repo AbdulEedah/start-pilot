@@ -24,7 +24,7 @@ interface RoadmapItem {
   id: string;
   title: string;
   description: string;
-  category: "product" | "marketing" | "funding" | "team" | "legal";
+  category: "product" | "marketing" | "funding" | "team" | "legal" | "operations" | "finance";
   priority: "low" | "medium" | "high" | "critical";
   timeframe: string;
   status: "pending" | "in-progress" | "completed";
@@ -51,37 +51,64 @@ export default function RoadmapPage() {
     loadRoadmap();
   }, [activeSectorId]);
 
+  const mapBackendRoadmap = (data: any): Roadmap | null => {
+    if (!data) return null;
+    const rawTasks =
+      data.tasks ||
+      data.categories?.flatMap((c: any) =>
+        c.tasks?.map((t: any) => ({
+          ...t,
+          category: c.name?.toLowerCase() || "product",
+          estimated_duration: `Week ${t.start_week}${t.end_week && t.end_week !== t.start_week ? `-${t.end_week}` : ""}`,
+          status: t.is_completed ? "completed" : "pending",
+        }))
+      ) ||
+      [];
+
+    const validCategories = ["product", "marketing", "operations", "finance", "legal", "funding", "team"];
+
+    return {
+      id: String(data.id),
+      startupId: String(data.profile_id || data.user || ""),
+      title: data.startup_name || activeSector.defaultIdea.title || "Startup Roadmap",
+      items: rawTasks.map((t: any) => {
+        const cat = (t.category || t.phase || "").toLowerCase();
+        return {
+          id: String(t.id),
+          title: t.title,
+          description: t.description,
+          category: (validCategories.includes(cat) ? cat : "product") as any,
+          priority: (["high", "medium", "low", "critical"].includes((t.priority || "").toLowerCase())
+            ? (t.priority || "").toLowerCase()
+            : "medium") as any,
+          timeframe: t.estimated_duration || (t.start_week ? `Week ${t.start_week}` : ""),
+          status:
+            t.status === "completed" || t.is_completed
+              ? "completed"
+              : t.status === "in_progress" || t.status === "in-progress"
+                ? "in-progress"
+                : "pending",
+          dependencies: [],
+        };
+      }),
+      createdAt: data.generated_at || data.created_at || new Date().toISOString(),
+      updatedAt: data.updated_at || new Date().toISOString(),
+    };
+  };
+
   const loadRoadmap = async () => {
     try {
       // Try to fetch from backend
       const backendRoadmap = await roadmapsApi.getRoadmap();
       if (backendRoadmap) {
-        const mapped: Roadmap = {
-          id: String(backendRoadmap.id),
-          startupId: String(backendRoadmap.user),
-          title: backendRoadmap.startup_name,
-          items: backendRoadmap.tasks.map((t: any) => ({
-            id: String(t.id),
-            title: t.title,
-            description: t.description,
-            category: "product" as const,
-            priority: "medium" as const,
-            timeframe: t.estimated_duration || "",
-            status:
-              t.status === "completed"
-                ? "completed"
-                : t.status === "in_progress"
-                  ? "in-progress"
-                  : "pending",
-            dependencies: [],
-          })),
-          createdAt: backendRoadmap.created_at,
-          updatedAt: backendRoadmap.updated_at,
-        };
-        setRoadmap(mapped);
+        const mapped = mapBackendRoadmap(backendRoadmap);
+        if (mapped && mapped.items.length > 0) {
+          setRoadmap(mapped);
+        }
       }
-    } catch {
-      // No roadmap yet, user needs to generate
+    } catch (err) {
+      // No roadmap yet or error fetching
+      console.log("No existing roadmap found or error loading roadmap:", err);
     } finally {
       setIsLoading(false);
     }
@@ -101,38 +128,19 @@ export default function RoadmapPage() {
         business_model: "SaaS / Platform",
       });
 
-      const mapped: Roadmap = {
-        id: String(result.id),
-        startupId: String(result.user),
-        title: result.startup_name,
-        items: result.tasks.map((t: any) => ({
-          id: String(t.id),
-          title: t.title,
-          description: t.description,
-          category: "product" as const,
-          priority: "medium" as const,
-          timeframe: t.estimated_duration || "",
-          status:
-            t.status === "completed"
-              ? "completed"
-              : t.status === "in_progress"
-                ? "in-progress"
-                : "pending",
-          dependencies: [],
-        })),
-        createdAt: result.created_at,
-        updatedAt: result.updated_at,
-      };
+      const mapped = mapBackendRoadmap(result);
+      if (mapped) {
+        setRoadmap(mapped);
+      }
 
-      setRoadmap(mapped);
-
-      toast.success(`${sectorDetails.name} Roadmap generated!`, {
+      toast.success(`${sectorDetails.name} Roadmap ready!`, {
         description: `Customized roadmap for ${sectorDetails.name} is ready`,
       });
     } catch (error: any) {
       console.error("Failed to generate roadmap:", error);
+      const detail = error?.data?.detail || error?.message || "Please try again";
       toast.error("Failed to generate roadmap", {
-        description: "Please try again",
+        description: detail,
       });
     } finally {
       setIsGenerating(false);
@@ -157,6 +165,9 @@ export default function RoadmapPage() {
 
     try {
       setRoadmap(updatedRoadmap);
+      await roadmapsApi.updateTask(Number(itemId), {
+        status: newStatus === "in-progress" ? "in_progress" : newStatus,
+      });
       toast.success("Progress updated!", {
         description: `Task marked as ${newStatus}`,
       });
@@ -192,8 +203,10 @@ export default function RoadmapPage() {
       case "marketing":
         return <TrendingUp className="w-4 h-4" />;
       case "funding":
+      case "finance":
         return <Target className="w-4 h-4" />;
       case "team":
+      case "operations":
         return <Flag className="w-4 h-4" />;
       case "legal":
         return <FileText className="w-4 h-4" />;

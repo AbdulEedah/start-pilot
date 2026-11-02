@@ -88,7 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error?.data?.detail ||
           error?.data?.non_field_errors?.[0] ||
           "Invalid email or password.";
-        throw new Error(detail);
+        const err = new Error(detail);
+        (err as any).data = error?.data;
+        throw err;
       }
     },
     [],
@@ -112,10 +114,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         return true;
       } catch (error: any) {
-        const firstError = Object.values(error?.data || {})
-          .flat()
-          .join(", ");
-        throw new Error(firstError || "Registration failed.");
+        const firstError =
+          error?.data?.detail ||
+          error?.data?.non_field_errors?.[0] ||
+          (typeof error?.data === "object"
+            ? Object.values(error.data).flat().join(", ")
+            : null) ||
+          error?.message;
+        const err = new Error(firstError || "Registration failed.");
+        (err as any).data = error?.data;
+        throw err;
       }
     },
     [],

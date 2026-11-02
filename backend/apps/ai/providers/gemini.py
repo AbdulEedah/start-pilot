@@ -47,7 +47,7 @@ class GeminiProvider(BaseAIProvider):
 
     def __init__(self):
         """Configure the Gemini SDK with the API key from settings."""
-        genai.configure(api_key=settings.GEMINI_API_KEY, transport="rest")
+        genai.configure(api_key=settings.GEMINI_API_KEY)
         self._model = genai.GenerativeModel(GEMINI_MODEL)
 
     # ─────────────────────────────────────────────────────────────────────────

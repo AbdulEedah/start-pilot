@@ -46,3 +46,16 @@ frontend/*.tsbuildinfo
 frontend/next-env.d.ts
 
 guide.md
+
+
+# Python & Backend
+*.sqlite3*
+db.sqlite3*
+.coverage
+backend/.coverage
+htmlcov/
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+backend/logs/

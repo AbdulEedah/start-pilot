@@ -27,12 +27,25 @@ export interface Conversation {
 export interface SendMessagePayload {
   conversation_id?: number;
   content: string;
+  message?: string;
   context?: Record<string, any>;
 }
 
 export interface SendMessageResponse {
   message: Message;
   conversation_id: number;
+  id?: number;
+  role?: string;
+  content?: string;
+  created_at?: string;
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  total_pages?: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
 
 export const chatApi = {
@@ -48,14 +61,23 @@ export const chatApi = {
    * POST /api/v1/chat/messages/
    */
   sendMessage: (data: SendMessagePayload) =>
-    apiClient.post<SendMessageResponse>("/api/v1/chat/messages/", data),
+    apiClient.post<SendMessageResponse>("/api/v1/chat/messages/", {
+      ...data,
+      message: data.content || data.message,
+    }),
 
   /**
    * Get message history for a conversation.
+   * Unpacks paginated response automatically.
    * GET /api/v1/chat/messages/history/?conversation_id=<id>
    */
-  getMessageHistory: (conversationId: number) =>
-    apiClient.get<Message[]>("/api/v1/chat/messages/history/", {
+  getMessageHistory: async (conversationId: number): Promise<Message[]> => {
+    const res = await apiClient.get<any>("/api/v1/chat/messages/history/", {
       conversation_id: String(conversationId),
-    }),
+    });
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.results)) return res.results;
+    if (Array.isArray(res?.messages)) return res.messages;
+    return [];
+  },
 };

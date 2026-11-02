@@ -5,16 +5,32 @@
  * to the Django REST Framework backend.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost";
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Clean trailing slashes and /api suffix so paths starting with /api/v1 work seamlessly
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 
 interface TokenPair {
   access: string;
   refresh: string;
 }
 
-interface ApiError {
+export class ApiError extends Error {
   status: number;
   data: Record<string, any>;
+
+  constructor(status: number, data: Record<string, any>) {
+    const message =
+      (typeof data?.detail === "string" && data.detail) ||
+      (typeof data?.message === "string" && data.message) ||
+      (typeof data?.error === "string" && data.error) ||
+      (typeof data?.non_field_errors?.[0] === "string" && data.non_field_errors[0]) ||
+      `Request failed with status ${status}`;
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+    Object.setPrototypeOf(this, ApiError.prototype);
+  }
 }
 
 class ApiClient {
@@ -119,7 +135,8 @@ class ApiClient {
   ): Promise<T> {
     const { body, params, authenticated = true, formData = false } = options;
 
-    const url = new URL(`${API_BASE_URL}${path}`);
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const url = new URL(`${API_BASE_URL}${cleanPath}`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, value);
@@ -136,22 +153,35 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
-    let response = await fetch(url.toString(), {
-      method,
-      headers,
-      body: formData ? body : body ? JSON.stringify(body) : undefined,
-    });
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        method,
+        headers,
+        body: formData ? body : body ? JSON.stringify(body) : undefined,
+      });
+    } catch (networkError: any) {
+      throw new ApiError(0, {
+        detail: `Cannot connect to server at ${API_BASE_URL}. Please ensure the backend is running.`,
+      });
+    }
 
     // If 401, attempt token refresh and retry once
     if (response.status === 401 && authenticated && this.refreshToken) {
       const refreshed = await this.attemptTokenRefresh();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${this.accessToken}`;
-        response = await fetch(url.toString(), {
-          method,
-          headers,
-          body: formData ? body : body ? JSON.stringify(body) : undefined,
-        });
+        try {
+          response = await fetch(url.toString(), {
+            method,
+            headers,
+            body: formData ? body : body ? JSON.stringify(body) : undefined,
+          });
+        } catch (networkError: any) {
+          throw new ApiError(0, {
+            detail: `Cannot connect to server at ${API_BASE_URL}. Please ensure the backend is running.`,
+          });
+        }
       }
     }
 
@@ -160,14 +190,15 @@ class ApiClient {
       return undefined as T;
     }
 
-    const data = await response.json();
+    let data: any = {};
+    try {
+      data = await response.json();
+    } catch {
+      data = { detail: response.statusText || "Server returned non-JSON response." };
+    }
 
     if (!response.ok) {
-      const error: ApiError = {
-        status: response.status,
-        data,
-      };
-      throw error;
+      throw new ApiError(response.status, data);
     }
 
     return data as T;
@@ -218,4 +249,4 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-export type { TokenPair, ApiError };
+export type { TokenPair };

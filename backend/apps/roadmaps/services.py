@@ -28,7 +28,6 @@ CATEGORY_ORDER = {
 }
 
 
-@transaction.atomic
 def generate_roadmap(profile, report) -> Roadmap:
     """
     Call the AI provider to generate a categorised startup roadmap, then
@@ -58,14 +57,14 @@ def generate_roadmap(profile, report) -> Roadmap:
         logger.error("AI roadmap generation failed for profile %s: %s", profile.id, exc)
         raise AIGenerationError(detail=f"Roadmap generation failed: {exc}") from exc
 
-    # Replace existing roadmap atomically
-    Roadmap.objects.filter(profile=profile).delete()
-
     # Determine total weeks from the task data
     total_weeks = _calculate_total_weeks(categories_data)
 
-    roadmap = Roadmap.objects.create(profile=profile, total_weeks=total_weeks)
-    _create_categories_and_tasks(roadmap, categories_data)
+    # Replace existing roadmap atomically inside transaction
+    with transaction.atomic():
+        Roadmap.objects.filter(profile=profile).delete()
+        roadmap = Roadmap.objects.create(profile=profile, total_weeks=total_weeks)
+        _create_categories_and_tasks(roadmap, categories_data)
 
     logger.info(
         "Roadmap created for profile %s: %d categories, %d weeks",
@@ -203,3 +202,4 @@ def _normalise_priority(value: str) -> str:
     if normalised in {"high", "medium", "low"}:
         return normalised
     return "medium"
+

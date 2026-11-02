@@ -42,7 +42,7 @@ export default function ChatPage() {
         const conv = conversations[0]
         setConversationId(conv.id)
         const history = await chatApi.getMessageHistory(conv.id)
-        setMessages(history)
+        const messageList = Array.isArray(history) ? history : (Array.isArray((history as any)?.results) ? (history as any).results : []); setMessages(messageList)
       } else {
         // No conversation yet, just show greeting
         setMessages([])
@@ -64,7 +64,7 @@ export default function ChatPage() {
       created_at: new Date().toISOString(),
     }
 
-    const updatedMessages = [...messages, userMessage]
+    const currentMessages = Array.isArray(messages) ? messages : []; const updatedMessages = [...currentMessages, userMessage]
     setMessages(updatedMessages)
     setInput("")
     setIsTyping(true)
@@ -80,20 +80,21 @@ export default function ChatPage() {
         setConversationId(response.conversation_id)
       }
 
+      const rawMsg = response.message || (response as any);
       const aiMessage: Message = {
-        id: response.message.id,
-        conversation: response.conversation_id,
-        role: "assistant",
-        content: response.message.content,
-        metadata: response.message.metadata,
-        created_at: response.message.created_at,
+        id: rawMsg?.id || Date.now(),
+        conversation: response.conversation_id || rawMsg?.conversation || conversationId || 0,
+        role: 'assistant',
+        content: rawMsg?.content || '',
+        metadata: rawMsg?.metadata || null,
+        created_at: rawMsg?.created_at || new Date().toISOString(),
       }
 
       setMessages([...updatedMessages, aiMessage])
     } catch (error) {
       console.error('Failed to get AI response:', error)
       toast.error("Failed to get AI response", {
-        description: "Please try again"
+        description: (error as any)?.data?.detail || (error as any)?.message || "Please try again"
       })
     } finally {
       setIsTyping(false)
@@ -160,7 +161,7 @@ export default function ChatPage() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={scrollRef}>
-        {messages.length === 0 && !isTyping && (
+        {(!Array.isArray(messages) || messages.length === 0) && !isTyping && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-4">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
@@ -174,7 +175,7 @@ export default function ChatPage() {
           </div>
         )}
         <AnimatePresence initial={false}>
-          {messages.map((message) => (
+          {(Array.isArray(messages) ? messages : []).map((message) => (
             <motion.div
               key={message.id}
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -269,3 +270,5 @@ export default function ChatPage() {
     </div>
   )
 }
+
+

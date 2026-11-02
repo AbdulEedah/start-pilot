@@ -47,7 +47,9 @@ class RegisterView(APIView):
     def post(self, request, *args, **kwargs):
         """Validate payload, create user, return user data with tokens."""
         serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning('Registration validation failed: %s', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = services.register_user(
             email=serializer.validated_data["email"],
@@ -84,7 +86,9 @@ class LoginView(APIView):
     def post(self, request, *args, **kwargs):
         """Validate credentials and return tokens."""
         serializer = LoginSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning('Registration validation failed: %s', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
@@ -106,7 +110,9 @@ class GoogleOAuthView(APIView):
     def post(self, request, *args, **kwargs):
         """Exchange Google code for JWT tokens."""
         serializer = GoogleOAuthSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning('Registration validation failed: %s', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             result = services.google_oauth_login(code=serializer.validated_data["code"])
@@ -182,7 +188,9 @@ class PasswordResetRequestView(APIView):
     def post(self, request, *args, **kwargs):
         """Initiate password reset flow."""
         serializer = PasswordResetRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning('Registration validation failed: %s', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         services.request_password_reset(email=serializer.validated_data["email"])
         return Response(
             {"detail": "If an account with that email exists, a reset link has been sent."},
@@ -207,7 +215,9 @@ class PasswordResetConfirmView(APIView):
     def post(self, request, *args, **kwargs):
         """Validate token and set new password."""
         serializer = PasswordResetConfirmSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning('Registration validation failed: %s', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         services.confirm_password_reset(
             token_obj=serializer.validated_data["token_obj"],
             new_password=serializer.validated_data["password"],
@@ -234,7 +244,9 @@ class EmailVerifyView(APIView):
     def post(self, request, *args, **kwargs):
         """Validate verification token and mark email as verified."""
         serializer = EmailVerifySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            logger.warning('Registration validation failed: %s', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             services.verify_email(token_str=serializer.validated_data["token"])
@@ -244,3 +256,4 @@ class EmailVerifyView(APIView):
         return Response(
             {"detail": "Email verified successfully."}, status=status.HTTP_200_OK
         )
+

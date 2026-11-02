@@ -94,7 +94,8 @@ class SendMessageView(APIView):
             user_message=serializer.validated_data["message"],
         )
 
-        return Response(MessageSerializer(assistant_message).data, status=status.HTTP_200_OK)
+        message_data = MessageSerializer(assistant_message).data
+        return Response({**message_data, 'message': message_data, 'conversation_id': conversation.id}, status=status.HTTP_200_OK)
 
 
 class MessageListView(APIView):
@@ -146,3 +147,4 @@ class MessageListView(APIView):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(messages, request)
         return paginator.get_paginated_response(MessageSerializer(page, many=True).data)
+
