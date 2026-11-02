@@ -1,0 +1,22 @@
+Hi {{ user.first_name_display }},
+
+Your StartPilot Roadmap is ready!
+
+Your AI-generated startup roadmap includes:
+  • A week-by-week execution plan (12 weeks)
+  • Tasks across 5 categories: Product, Legal, Marketing, Finance, Operations
+  • Priority levels so you know what to tackle first
+  • The ability to mark tasks complete and add personal notes
+
+View your roadmap here:
+{{ roadmap_url }}
+
+Remember: consistent execution beats a perfect plan. Start with the
+high-priority tasks in week 1 and build momentum.
+
+You've got this!
+
+The StartPilot Team
+
+---
+{{ frontend_url }}

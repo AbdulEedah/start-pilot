@@ -32,9 +32,10 @@ const backgroundSchema = z.object({
 interface BackgroundFormProps {
   onBack: () => void
   onSubmit: (data: z.infer<typeof backgroundSchema>) => void
+  isSubmitting?: boolean
 }
 
-export function BackgroundForm({ onBack, onSubmit }: BackgroundFormProps) {
+export function BackgroundForm({ onBack, onSubmit, isSubmitting = false }: BackgroundFormProps) {
   const form = useForm<z.infer<typeof backgroundSchema>>({
     resolver: zodResolver(backgroundSchema),
     defaultValues: {
@@ -180,8 +181,15 @@ export function BackgroundForm({ onBack, onSubmit }: BackgroundFormProps) {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <Button type="submit" className="flex-[2]">
-            Continue to AI Chat
+          <Button type="submit" className="flex-[2]" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Continue to AI Chat"
+            )}
           </Button>
         </div>
       </form>

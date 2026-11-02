@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useOffline } from "@/components/offline-provider"
+import { useAuth } from "@/components/auth-provider"
 import { getSectorDetails } from "@/lib/sector-utils"
 
 const MOCK_MOVIES = [
@@ -32,7 +32,7 @@ const MOCK_QUOTES = [
 ]
 
 export default function RecommendationsPage() {
-  const { sector: activeSectorId } = useOffline()
+  const { sector: activeSectorId } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
 
   const [quote, setQuote] = useState(MOCK_QUOTES[0])

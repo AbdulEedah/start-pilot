@@ -1,0 +1,25 @@
+Hi {{ user.first_name_display }},
+
+Great news — your StartPilot Validation Report is ready!
+
+Your AI-powered report includes:
+  • An overall viability score (0–100)
+  • Key strengths and weaknesses of your idea
+  • Market and competitor analysis
+  • Founder readiness assessment
+  • Sector-specific insights
+  • Actionable recommendations
+  • A 30-day action plan
+
+View your report here:
+{{ dashboard_url }}
+
+Your personalised Roadmap has also been generated and is waiting for you
+on the same dashboard.
+
+Good luck — we believe in your vision!
+
+The StartPilot Team
+
+---
+{{ frontend_url }}

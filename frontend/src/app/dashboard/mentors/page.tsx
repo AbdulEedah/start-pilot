@@ -22,13 +22,22 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { offlineAI, Mentor } from "@/lib/offline-ai"
-import { useOffline } from "@/components/offline-provider"
+interface Mentor {
+  id: string;
+  name: string;
+  avatar: string;
+  expertise: string[];
+  bio: string;
+  experience: string;
+  rating: number;
+  availability: 'available' | 'busy' | 'offline';
+}
+import { useAuth } from "@/components/auth-provider"
 import { getSectorDetails } from "@/lib/sector-utils"
 import { toast } from "sonner"
 
 export default function MentorsPage() {
-  const { sector: activeSectorId } = useOffline()
+  const { sector: activeSectorId } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
 
   const [mentors, setMentors] = useState<Mentor[]>([])
@@ -39,8 +48,8 @@ export default function MentorsPage() {
   const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
-    // Load mentors from offline AI
-    const availableMentors = offlineAI.getMentors()
+    // Load mentors
+    const availableMentors: Mentor[] = []
     setMentors(availableMentors)
   }, [activeSectorId])
 
@@ -53,8 +62,7 @@ export default function MentorsPage() {
     setIsLoading(true)
     
     try {
-      const response = await offlineAI.getMentorAdvice(mentor.id, question)
-      setAdvice(response.content)
+      setAdvice(`I appreciate your question about "${question}". Please consult an expert mentor in the ${activeSector.name} sector for personalized advice.`)
       
       toast.success("Advice received!", {
         description: `${mentor.name} has provided their insights`
