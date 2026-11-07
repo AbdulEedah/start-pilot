@@ -17,7 +17,8 @@ import {
   Menu,
   X,
   Lock,
-  RotateCcw
+  RotateCcw,
+  ShieldCheck
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -33,7 +34,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { user, sector: activeSectorId, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, sector: activeSectorId, logout } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -42,6 +43,13 @@ export default function DashboardLayout({
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [pathname])
+
+  // Protect all dashboard routes
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login")
+    }
+  }, [isLoading, isAuthenticated, router])
 
   const handleLogout = async () => {
     await logout()
@@ -56,9 +64,28 @@ export default function DashboardLayout({
     { href: "/dashboard/recommendations", label: "Recommendations", icon: Sparkles },
     { href: "/dashboard/mentors", label: "Mentorship", icon: Users },
     { href: "/dashboard/tools", label: "AI Tools Hub", icon: Cpu },
-    { href: "/dashboard/pricing", label: "Pricing & Pro", icon: Target, extra: "text-amber-500" },
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
+    ...(user?.is_staff
+      ? [{ href: "/admin", label: "Admin Center", icon: ShieldCheck, extra: "text-primary font-bold" }]
+      : []),
   ]
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center animate-pulse">
+            <Rocket className="w-6 h-6 text-primary animate-bounce" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-background overflow-hidden">
@@ -204,7 +231,7 @@ export default function DashboardLayout({
           <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/10 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                {user?.subscription === 'free' ? 'Free Plan' : 'Pro Plan'}
+                Founder Workspace
               </p>
               <Link href="/onboarding" className="text-[10px] font-semibold text-muted-foreground hover:text-primary underline">
                 Sector Lock

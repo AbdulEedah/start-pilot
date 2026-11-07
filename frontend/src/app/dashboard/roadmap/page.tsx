@@ -44,12 +44,14 @@ export default function RoadmapPage() {
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, sector: activeSectorId } = useAuth();
+  const { user, isAuthenticated, sector: activeSectorId } = useAuth();
   const activeSector = getSectorDetails(activeSectorId);
 
   useEffect(() => {
-    loadRoadmap();
-  }, [activeSectorId]);
+    if (isAuthenticated) {
+      loadRoadmap();
+    }
+  }, [isAuthenticated, activeSectorId]);
 
   const mapBackendRoadmap = (data: any): Roadmap | null => {
     if (!data) return null;
@@ -106,9 +108,11 @@ export default function RoadmapPage() {
           setRoadmap(mapped);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       // No roadmap yet or error fetching
-      console.log("No existing roadmap found or error loading roadmap:", err);
+      if (err?.status !== 401) {
+        console.log("No existing roadmap found or error loading roadmap:", err);
+      }
     } finally {
       setIsLoading(false);
     }

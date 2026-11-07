@@ -13,8 +13,9 @@ export interface User {
   avatar: string | null;
   is_email_verified: boolean;
   date_joined: string;
-  // Extended fields used by the frontend
-  subscription?: string;
+  role?: "user" | "admin" | "super_admin";
+  is_staff?: boolean;
+  is_superuser?: boolean;
   onboardingCompleted?: boolean;
 }
 

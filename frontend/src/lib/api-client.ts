@@ -69,11 +69,21 @@ class ApiClient {
   }
 
   getAccessToken(): string | null {
+    if (!this.accessToken && typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem("access_token");
+    }
     return this.accessToken;
   }
 
+  getRefreshToken(): string | null {
+    if (!this.refreshToken && typeof window !== "undefined") {
+      this.refreshToken = localStorage.getItem("refresh_token");
+    }
+    return this.refreshToken;
+  }
+
   isAuthenticated(): boolean {
-    return !!this.accessToken;
+    return !!this.getAccessToken();
   }
 
   // ──────────────────────────────────────────────
@@ -81,7 +91,8 @@ class ApiClient {
   // ──────────────────────────────────────────────
 
   private async attemptTokenRefresh(): Promise<boolean> {
-    if (!this.refreshToken) return false;
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) return false;
 
     // Deduplicate concurrent refresh attempts
     if (this.refreshPromise) return this.refreshPromise;
@@ -93,23 +104,29 @@ class ApiClient {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh: this.refreshToken }),
+            body: JSON.stringify({ refresh: refreshToken }),
           },
         );
 
         if (!response.ok) {
           this.clearTokens();
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("startpilot_auth_unauthorized"));
+          }
           return false;
         }
 
         const data = await response.json();
         this.setTokens({
           access: data.access,
-          refresh: data.refresh || this.refreshToken!,
+          refresh: data.refresh || refreshToken,
         });
         return true;
       } catch {
         this.clearTokens();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("startpilot_auth_unauthorized"));
+        }
         return false;
       } finally {
         this.refreshPromise = null;
@@ -149,8 +166,26 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    if (authenticated && this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    if (authenticated) {
+      let token = this.getAccessToken();
+      // If access token is missing but refresh token exists, try refreshing proactively
+      if (!token && this.getRefreshToken()) {
+        const refreshed = await this.attemptTokenRefresh();
+        if (refreshed) {
+          token = this.getAccessToken();
+        }
+      }
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      } else {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("startpilot_auth_unauthorized"));
+        }
+        throw new ApiError(401, {
+          detail: "Authentication credentials were not provided.",
+        });
+      }
     }
 
     let response: Response;
@@ -167,10 +202,10 @@ class ApiClient {
     }
 
     // If 401, attempt token refresh and retry once
-    if (response.status === 401 && authenticated && this.refreshToken) {
+    if (response.status === 401 && authenticated && this.getRefreshToken()) {
       const refreshed = await this.attemptTokenRefresh();
       if (refreshed) {
-        headers["Authorization"] = `Bearer ${this.accessToken}`;
+        headers["Authorization"] = `Bearer ${this.getAccessToken()}`;
         try {
           response = await fetch(url.toString(), {
             method,
@@ -198,6 +233,12 @@ class ApiClient {
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.clearTokens();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("startpilot_auth_unauthorized"));
+        }
+      }
       throw new ApiError(response.status, data);
     }
 
