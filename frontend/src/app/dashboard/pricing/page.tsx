@@ -1,157 +1,79 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Check, Zap, Sparkles, Rocket, Loader2 } from "lucide-react"
+import { Check, Sparkles, Rocket, ArrowRight, ShieldCheck, Heart } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { toast } from "sonner"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const PLANS = [
-  {
-    name: "Starter",
-    price: { monthly: "$0", yearly: "$0" },
-    desc: "Perfect for testing your first startup idea.",
-    features: [
-      "5 AI Validation Sessions",
-      "Basic Startup Roadmap",
-      "Standard Resource Hub",
-      "Community Support"
-    ],
-    cta: "Current Plan",
-    premium: false
-  },
-  {
-    name: "Pro Pilot",
-    price: { monthly: "$29", yearly: "$290" },
-    desc: "For serious founders building multiple ventures.",
-    features: [
-      "Unlimited AI Validation",
-      "Detailed 'Blueprint' PDF Exports",
-      "Specialized AI Tools Hub",
-      "Advanced Strategy Assistant",
-      "Priority Email Support"
-    ],
-    cta: "Upgrade to Pro",
-    premium: true
-  },
-  {
-    name: "Enterprise",
-    price: { monthly: "$99", yearly: "$990" },
-    desc: "Custom solutions for incubators and accelerators.",
-    features: [
-      "White-label Reports",
-      "Multi-user Teams",
-      "Custom AI Training",
-      "Dedicated Mentor Access",
-      "API Access"
-    ],
-    cta: "Contact Sales",
-    premium: false
-  }
-]
-
-export default function PricingPage() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly")
-  const [isLoading, setIsLoading] = useState<string | null>(null)
-
-  const handleUpgrade = (planName: string) => {
-    setIsLoading(planName)
-    // Mock Stripe Checkout
-    setTimeout(() => {
-      setIsLoading(null)
-      toast.success(`Welcome to ${planName}!`, {
-        description: "Your pro features are now unlocked.",
-      })
-    }, 2000)
-  }
+export default function DashboardPricingPage() {
+  const features = [
+    "Unlimited AI Startup Concept Validations",
+    "Tailored 12-Week Execution Roadmap",
+    "AI Pitch Deck Coach & Slide Scoring",
+    "Direct Access to Verified Mentors & Calendly Booking",
+    "Sector Insights & Curated Resource Library",
+    "Interactive Strategy Chat & Growth Recommendations"
+  ]
 
   return (
-    <div className="p-8 space-y-12 overflow-y-auto">
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold font-heading">Elevate your startup journey</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-          Choose the plan that fits your ambition. From raw ideation to investor-ready ventures.
-        </p>
-
-        <div className="flex justify-center pt-4">
-          <Tabs value={billing} onValueChange={(v) => setBilling(v as any)} className="w-48">
-            <TabsList className="grid w-full grid-cols-2 rounded-full">
-              <TabsTrigger value="monthly" className="rounded-full">Monthly</TabsTrigger>
-              <TabsTrigger value="yearly" className="rounded-full">Yearly</TabsTrigger>
-            </TabsList>
-          </Tabs>
+    <div className="p-8 space-y-8 overflow-y-auto max-w-4xl mx-auto">
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-xs font-bold uppercase tracking-wider">
+          <ShieldCheck className="w-4 h-4" /> 100% Free Access Enabled
         </div>
+        <h1 className="text-3xl md:text-4xl font-bold font-heading">Platform Access & Status</h1>
+        <p className="text-muted-foreground text-sm max-w-xl mx-auto">
+          StartPilot is completely free during our founder beta. There are no payment plans, paywalls, or credit card requirements.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-        {PLANS.map((plan, i) => (
-          <motion.div
-            key={plan.name}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`relative p-8 rounded-[40px] border flex flex-col ${
-              plan.premium 
-                ? "bg-primary text-primary-foreground border-primary shadow-2xl shadow-primary/20 scale-105 z-10" 
-                : "bg-card border-border/50"
-            }`}
-          >
-            {plan.premium && (
-              <div className="absolute top-0 right-8 -translate-y-1/2 bg-amber-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                Most Popular
-              </div>
-            )}
+      <Card className="rounded-[32px] border-2 border-primary/20 shadow-xl overflow-hidden bg-card">
+        <CardHeader className="text-center pb-2 pt-8">
+          <CardTitle className="text-2xl font-bold font-heading">Founder Beta Tier</CardTitle>
+          <div className="flex items-baseline justify-center gap-1 mt-2">
+            <span className="text-5xl font-extrabold text-primary font-heading">$0</span>
+            <span className="text-muted-foreground text-sm font-semibold">/ All Features Included</span>
+          </div>
+          <CardDescription className="text-xs pt-2">
+            Your account has full unrestricted access to the StartPilot startup acceleration engine.
+          </CardDescription>
+        </CardHeader>
 
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold font-heading mb-2">{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-4xl font-bold">{billing === 'monthly' ? plan.price.monthly : plan.price.yearly}</span>
-                <span className="text-sm opacity-60">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
-              </div>
-              <p className={`text-sm ${plan.premium ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                {plan.desc}
-              </p>
-            </div>
+        <CardContent className="p-8 space-y-6">
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
+            <Sparkles className="w-4 h-4" /> All AI tools, roadmaps, and mentor networks are active and unlocked.
+          </div>
 
-            <div className="space-y-4 mb-12">
-              {plan.features.map((feature, j) => (
-                <div key={j} className="flex items-center gap-3 text-sm">
-                  <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                    plan.premium ? "bg-white/20" : "bg-primary/10"
-                  }`}>
-                    <Check className={`w-3 h-3 ${plan.premium ? "text-white" : "text-primary"}`} />
+          <div className="space-y-3 pt-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              What's Unlocked On Your Account:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {features.map((item, idx) => (
+                <div key={idx} className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
                   </div>
-                  <span>{feature}</span>
+                  <span className="text-xs font-medium text-foreground/90">{item}</span>
                 </div>
               ))}
             </div>
+          </div>
 
-            <Button
-              disabled={isLoading !== null || plan.name === "Starter"}
-              onClick={() => handleUpgrade(plan.name)}
-              className={`mt-auto h-12 rounded-full font-bold transition-all ${
-                plan.premium 
-                  ? "bg-white text-primary hover:bg-white/90 shadow-lg" 
-                  : "bg-accent text-foreground hover:bg-accent/80"
-              }`}
-            >
-              {isLoading === plan.name ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : plan.cta}
-            </Button>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Trust Section */}
-      <div className="text-center pt-12 text-sm text-muted-foreground space-y-4">
-        <p>Join 10,000+ founders worldwide. Secure payments with Stripe.</p>
-        <div className="flex justify-center gap-8 opacity-50 grayscale contrast-200">
-          <span className="font-bold tracking-tighter">STRIPE</span>
-          <span className="font-bold tracking-tighter">VISA</span>
-          <span className="font-bold tracking-tighter">MASTERCARD</span>
-          <span className="font-bold tracking-tighter">APPLE PAY</span>
-        </div>
-      </div>
+          <div className="pt-4 flex flex-col sm:flex-row gap-3">
+            <Link href="/dashboard" className="flex-1">
+              <Button className="w-full rounded-full font-bold shadow-md shadow-primary/20">
+                <Rocket className="w-4 h-4 mr-2" /> Go to Dashboard
+              </Button>
+            </Link>
+            <Link href="/dashboard/mentors" className="flex-1">
+              <Button variant="outline" className="w-full rounded-full font-semibold">
+                Explore Mentors & Advisors
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

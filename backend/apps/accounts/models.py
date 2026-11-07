@@ -100,10 +100,28 @@ class User(AbstractUser):
         verbose_name="avatar URL",
         help_text="URL of the user's profile picture (from Google or uploaded).",
     )
+    ROLE_USER = "user"
+    ROLE_ADMIN = "admin"
+    ROLE_SUPER_ADMIN = "super_admin"
+
+    ROLE_CHOICES = [
+        (ROLE_USER, "User"),
+        (ROLE_ADMIN, "Admin"),
+        (ROLE_SUPER_ADMIN, "Super Admin"),
+    ]
+
     is_email_verified = models.BooleanField(
         default=False,
         verbose_name="email verified",
         help_text="Indicates whether the user has verified their email address.",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default=ROLE_USER,
+        db_index=True,
+        verbose_name="user role",
+        help_text="Role determining platform permissions: user, admin, or super_admin.",
     )
 
     USERNAME_FIELD = "email"
@@ -116,6 +134,30 @@ class User(AbstractUser):
         verbose_name = "user"
         verbose_name_plural = "users"
         ordering = ["-date_joined"]
+
+    def save(self, *args, **kwargs):
+        # Synchronize 3-tier role with is_staff and is_superuser
+        if self.is_superuser or self.role == self.ROLE_SUPER_ADMIN:
+            self.role = self.ROLE_SUPER_ADMIN
+            self.is_superuser = True
+            self.is_staff = True
+        elif self.role == self.ROLE_ADMIN or self.is_staff:
+            self.role = self.ROLE_ADMIN
+            self.is_staff = True
+            self.is_superuser = False
+        else:
+            self.role = self.ROLE_USER
+            self.is_staff = False
+            self.is_superuser = False
+        super().save(*args, **kwargs)
+
+    @property
+    def is_admin_or_super(self) -> bool:
+        return self.role in [self.ROLE_ADMIN, self.ROLE_SUPER_ADMIN] or self.is_staff
+
+    @property
+    def is_super_admin(self) -> bool:
+        return self.role == self.ROLE_SUPER_ADMIN or self.is_superuser
 
     def __str__(self) -> str:
         return f"{self.full_name} <{self.email}>"

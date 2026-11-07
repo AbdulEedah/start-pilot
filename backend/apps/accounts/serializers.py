@@ -28,8 +28,11 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "full_name",
             "avatar",
+            "role",
             "is_email_verified",
             "date_joined",
+            "is_staff",
+            "is_superuser",
         ]
         read_only_fields = fields
 

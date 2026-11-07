@@ -9,7 +9,7 @@ import { getSectorDetails } from "@/lib/sector-utils"
 import { profilesApi } from "@/lib/api/profiles"
 
 export default function DashboardPage() {
-  const { user, sector: activeSectorId } = useAuth()
+  const { user, isAuthenticated, sector: activeSectorId } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
   const [stats, setStats] = useState({
     roadmapProgress: 0,
@@ -17,8 +17,10 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
-    loadDashboardStats()
-  }, [])
+    if (isAuthenticated) {
+      loadDashboardStats()
+    }
+  }, [isAuthenticated])
 
   const loadDashboardStats = async () => {
     try {
@@ -27,8 +29,10 @@ export default function DashboardPage() {
         roadmapProgress: status.onboarding_completed ? 100 : 0,
         generationStatus: status.generation_status
       })
-    } catch (error) {
-      console.error('Failed to load dashboard stats:', error)
+    } catch (error: any) {
+      if (error?.status !== 401) {
+        console.error('Failed to load dashboard stats:', error)
+      }
     }
   }
 

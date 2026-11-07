@@ -15,6 +15,7 @@ interface AuthContextType {
   isOnline: boolean;
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   sector: string;
   changeSector: (newSector: string) => void;
   login: (email: string, password: string) => Promise<boolean>;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [sector, setSectorState] = useState<string>("technology");
 
   // Fetch current user on mount if tokens exist
@@ -48,7 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           apiClient.clearTokens();
           setUser(null);
           setIsAuthenticated(false);
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
+    } else {
+      setIsLoading(false);
     }
 
     const handleSectorChange = (e: Event) => {
@@ -58,11 +65,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const handleUnauthorized = () => {
+      apiClient.clearTokens();
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsLoading(false);
+    };
+
     window.addEventListener("startpilot_sector_changed", handleSectorChange);
+    window.addEventListener("startpilot_auth_unauthorized", handleUnauthorized);
     return () => {
       window.removeEventListener(
         "startpilot_sector_changed",
         handleSectorChange,
+      );
+      window.removeEventListener(
+        "startpilot_auth_unauthorized",
+        handleUnauthorized,
       );
     };
   }, []);
@@ -82,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setUser(response.user);
         setIsAuthenticated(true);
+        setIsLoading(false);
         return true;
       } catch (error: any) {
         const detail =
@@ -112,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setUser(response.user);
         setIsAuthenticated(true);
+        setIsLoading(false);
         return true;
       } catch (error: any) {
         const firstError =
@@ -131,7 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async (): Promise<void> => {
     try {
-      const refreshToken = localStorage.getItem("refresh_token");
+      const refreshToken =
+        apiClient.getRefreshToken() ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("refresh_token")
+          : null);
       if (refreshToken) {
         await authApi.logout(refreshToken);
       }
@@ -141,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       apiClient.clearTokens();
       setUser(null);
       setIsAuthenticated(false);
+      setIsLoading(false);
     }
   }, []);
 
@@ -155,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isOnline,
     user,
     isAuthenticated,
+    isLoading,
     sector,
     changeSector,
     login,

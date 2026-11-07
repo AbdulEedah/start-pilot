@@ -12,7 +12,7 @@ import { chatApi, type Message } from "@/lib/api/chat"
 import { toast } from "sonner"
 
 export default function ChatPage() {
-  const { user, sector: activeSectorId } = useAuth()
+  const { user, isAuthenticated, sector: activeSectorId } = useAuth()
   const sectorDetails = getSectorDetails(activeSectorId)
 
   const [messages, setMessages] = useState<Message[]>([])
@@ -32,8 +32,10 @@ export default function ChatPage() {
   }, [messages])
 
   useEffect(() => {
-    loadOrCreateConversation()
-  }, [])
+    if (isAuthenticated) {
+      loadOrCreateConversation()
+    }
+  }, [isAuthenticated])
 
   const loadOrCreateConversation = async () => {
     try {
@@ -47,8 +49,10 @@ export default function ChatPage() {
         // No conversation yet, just show greeting
         setMessages([])
       }
-    } catch (error) {
-      console.error('Failed to load conversations:', error)
+    } catch (error: any) {
+      if (error?.status !== 401) {
+        console.error('Failed to load conversations:', error)
+      }
     }
   }
 

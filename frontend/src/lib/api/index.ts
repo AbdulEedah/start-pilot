@@ -30,5 +30,27 @@ export type { Message, Conversation, SendMessagePayload, SendMessageResponse } f
 export { notificationsApi } from "./notifications";
 export type { Notification } from "./notifications";
 
+export { adminApi, publicMentorsApi } from "./admin";
+export type {
+  UserRole,
+  AdminAnalyticsResponse,
+  AdminAnalyticsMetrics,
+  SectorDistribution,
+  TrendDay,
+  RecentEvent,
+  AdminVenture,
+  AdminVenturesResponse,
+  AdminUser,
+  AdminUsersResponse,
+  AdminMentor,
+  AdminMentorsResponse,
+  PublicMentor,
+  PublicMentorsResponse,
+  AdminContentResponse,
+  AdminSector,
+  AdminResource,
+  AdminSettingsResponse,
+} from "./admin";
+
 export { apiClient, ApiError } from "@/lib/api-client";
 export type { TokenPair } from "@/lib/api-client";
