@@ -3,3 +3,5 @@ test/
 *.pyc
 .pytest_cache/
 logs/
+staticfiles/
+media/
