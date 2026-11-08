@@ -272,6 +272,8 @@ SENTRY_DSN = config("SENTRY_DSN", default="")
 # ─────────────────────────────────────────────────────────────────────────────
 # Logging
 # ─────────────────────────────────────────────────────────────────────────────
+(BASE_DIR / "logs").mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

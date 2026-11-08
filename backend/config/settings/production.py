@@ -89,6 +89,15 @@ if not REDIS_URL or REDIS_URL.strip() == "":
     CELERY_TASK_EAGER_PROPAGATES = False
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Logging (stream everything to console for Render)
+# ─────────────────────────────────────────────────────────────────────────────
+LOGGING["handlers"]["file"] = {
+    "level": "INFO",
+    "class": "logging.StreamHandler",
+    "formatter": "verbose",
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Sentry error tracking
 # ─────────────────────────────────────────────────────────────────────────────
 if SENTRY_DSN:
