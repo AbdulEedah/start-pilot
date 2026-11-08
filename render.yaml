@@ -6,7 +6,6 @@ services:
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --no-input"
     startCommand: "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     plan: free
-    healthCheckPath: /api/v1/health/
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.2
