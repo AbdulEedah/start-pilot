@@ -3,7 +3,8 @@ services:
     name: startpilot-backend
     runtime: python
     rootDir: backend
-    buildCommand: "./build.sh"
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt && python manage.py collectstatic --no-input"
+    preDeployCommand: "python manage.py migrate"
     startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     plan: free
     healthCheckPath: /api/v1/health/
@@ -25,7 +26,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: FRONTEND_URL
-        sync: false
+        value: https://startpilot.vercel.app
 
 databases:
   - name: startpilot-db
