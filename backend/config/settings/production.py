@@ -72,6 +72,7 @@ CSRF_COOKIE_SECURE = True
 # Static files – served via WhiteNoise in production
 # ─────────────────────────────────────────────────────────────────────────────
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+WHITENOISE_MANIFEST_STRICT = False
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Cache & Celery (Graceful fallback if Redis is not provisioned)
