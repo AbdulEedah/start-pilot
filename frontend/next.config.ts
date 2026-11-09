@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
-const backendUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000")
+let rawBackendUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+if (rawBackendUrl && !rawBackendUrl.startsWith("http://") && !rawBackendUrl.startsWith("https://")) {
+  rawBackendUrl = `https://${rawBackendUrl}`;
+}
+const backendUrl = rawBackendUrl
   .replace(/\/+$/, "")
   .replace(/\/api$/, "");
 
