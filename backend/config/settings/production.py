@@ -75,6 +75,16 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_MANIFEST_STRICT = False
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Email (Console fallback if SMTP credentials are not configured)
+# ─────────────────────────────────────────────────────────────────────────────
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+EMAIL_TIMEOUT = 5
+
+if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Cache & Celery (Graceful fallback if Redis is not provisioned)
 # ─────────────────────────────────────────────────────────────────────────────
 REDIS_URL = config("REDIS_URL", default=None)
