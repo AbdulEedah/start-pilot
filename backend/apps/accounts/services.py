@@ -50,11 +50,11 @@ def register_user(email: str, password: str, full_name: str) -> User:
     user = User.objects.create_user(email=email, password=password, full_name=full_name)
     logger.info("New user registered: %s", mask_email(email))
 
-    # Dispatch welcome email asynchronously – import here to avoid circular deps
+    # Dispatch welcome email asynchronously after commit so it never blocks registration
     from apps.notifications.tasks import send_welcome_email_task
 
     try:
-        send_welcome_email_task.delay(user.id)
+        transaction.on_commit(lambda: send_welcome_email_task.delay(user.id))
     except Exception as exc:
         logger.warning("Could not dispatch welcome email task: %s", exc)
     return user
@@ -166,7 +166,7 @@ def _find_or_create_google_user(
     from apps.notifications.tasks import send_welcome_email_task
 
     try:
-        send_welcome_email_task.delay(user.id)
+        transaction.on_commit(lambda: send_welcome_email_task.delay(user.id))
     except Exception as exc:
         logger.warning("Could not dispatch welcome email task: %s", exc)
     return user
@@ -196,7 +196,10 @@ def request_password_reset(email: str) -> None:
 
     from apps.notifications.tasks import send_password_reset_email_task
 
-    send_password_reset_email_task.delay(user.id, token.token)
+    try:
+        transaction.on_commit(lambda: send_password_reset_email_task.delay(user.id, token.token))
+    except Exception as exc:
+        logger.warning("Could not dispatch password reset email task: %s", exc)
 
 
 @transaction.atomic

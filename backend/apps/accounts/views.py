@@ -87,7 +87,7 @@ class LoginView(APIView):
         """Validate credentials and return tokens."""
         serializer = LoginSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
-            logger.warning('Registration validation failed: %s', serializer.errors)
+            logger.warning('Login validation failed: %s', serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
