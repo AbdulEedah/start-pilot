@@ -16,8 +16,8 @@ from apps.ai.providers.base import BaseAIProvider
 
 logger = logging.getLogger(__name__)
 
-# Gemini model to use – can be updated via a settings override
-GEMINI_MODEL = getattr(settings, "GEMINI_MODEL", "gemini-flash-latest")
+# Default Gemini model to use
+GEMINI_MODEL = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 # Expected JSON keys for the validation report
 VALIDATION_REPORT_KEYS = {
@@ -156,15 +156,26 @@ class GeminiProvider(BaseAIProvider):
             for msg in conversation_history
         ]
 
-        # Build a model with the system prompt
-        model = genai.GenerativeModel(
-            model_name=GEMINI_MODEL,
-            system_instruction=system_prompt,
-        )
-        chat_session = model.start_chat(history=history)
-
+        # Build a model with the system prompt, with automatic fallback
+        active_model = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash-lite")
         start = time.monotonic()
-        response = chat_session.send_message(user_message)
+        try:
+            model = genai.GenerativeModel(
+                model_name=active_model,
+                system_instruction=system_prompt,
+            )
+            chat_session = model.start_chat(history=history)
+            response = chat_session.send_message(user_message)
+        except Exception as exc:
+            logger.warning("Gemini chat with model '%s' failed (%s). Retrying with fallback model...", active_model, exc)
+            fallback_model = "gemini-3.5-flash-lite" if active_model != "gemini-3.5-flash-lite" else "gemini-3.8-flash"
+            model = genai.GenerativeModel(
+                model_name=fallback_model,
+                system_instruction=system_prompt,
+            )
+            chat_session = model.start_chat(history=history)
+            response = chat_session.send_message(user_message)
+
         duration = time.monotonic() - start
 
         self._log_usage(
@@ -241,8 +252,16 @@ class GeminiProvider(BaseAIProvider):
         Raises:
             RuntimeError: If the Gemini API returns an empty response.
         """
+        active_model = getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash-lite")
         start = time.monotonic()
-        response = self._model.generate_content(prompt)
+        try:
+            model = genai.GenerativeModel(active_model)
+            response = model.generate_content(prompt)
+        except Exception as exc:
+            logger.warning("Gemini generate_content with '%s' failed (%s). Retrying with fallback model...", active_model, exc)
+            fallback_model = "gemini-3.5-flash-lite" if active_model != "gemini-3.5-flash-lite" else "gemini-3.8-flash"
+            model = genai.GenerativeModel(fallback_model)
+            response = model.generate_content(prompt)
         duration = time.monotonic() - start
 
         text = response.text.strip() if response.text else ""
