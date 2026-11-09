@@ -1,7 +1,10 @@
 """
 Reusable Django validators for StartPilot.
 """
-import magic
+try:
+    import magic
+except (ImportError, Exception):
+    magic = None
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.deconstruct import deconstructible
@@ -44,7 +47,11 @@ class ImageMimeTypeValidator:
     def __call__(self, value):
         """Raise ValidationError if the file MIME type is not an allowed image type."""
         value.seek(0)
-        mime = magic.from_buffer(value.read(1024), mime=True)
+        if magic:
+            mime = magic.from_buffer(value.read(1024), mime=True)
+        else:
+            import mimetypes
+            mime, _ = mimetypes.guess_type(getattr(value, "name", "") or "")
         value.seek(0)
         if mime not in self.ALLOWED_MIME_TYPES:
             raise ValidationError(

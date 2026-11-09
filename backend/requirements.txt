@@ -54,8 +54,9 @@ black==24.4.2
 flake8==7.0.0
 isort==5.13.2
 
-# WSGI server
+# WSGI server & static files
 gunicorn==22.0.0
+whitenoise==6.7.0
 
 # Utilities
 Jinja2==3.1.4

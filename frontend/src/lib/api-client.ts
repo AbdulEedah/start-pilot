@@ -5,7 +5,10 @@
  * to the Django REST Framework backend.
  */
 
-const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+let rawBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+if (rawBaseUrl && !rawBaseUrl.startsWith("http://") && !rawBaseUrl.startsWith("https://")) {
+  rawBaseUrl = `https://${rawBaseUrl}`;
+}
 // Clean trailing slashes and /api suffix so paths starting with /api/v1 work seamlessly
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 
