@@ -253,8 +253,16 @@ export const adminApi = {
         if (data.ai_access_blocked !== undefined) patchPayload.ai_access_blocked = data.ai_access_blocked;
 
         const updated = await apiClient.patch<any>(`/api/v1/admin/users/${id}/`, patchPayload);
+
+        // If the backend did not return token_limit, it is running an older build that has not yet migrated the token fields
+        if (updated.token_limit === undefined) {
+          throw new Error(
+            "Your Render backend is running an older build that does not have token controls yet. Please go to your Render dashboard and click 'Manual Deploy -> Deploy latest commit'."
+          );
+        }
+
         const used = updated.tokens_used ?? 0;
-        const limit = updated.token_limit ?? 0;
+        const limit = updated.token_limit ?? (data.token_limit ?? 100000);
         const remaining = limit === 0 ? "Unlimited" : Math.max(0, limit - used);
         const usage_percentage = limit === 0 ? 0 : Math.min(100, Math.round((used / limit) * 100));
 
