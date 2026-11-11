@@ -8,7 +8,7 @@ import {
   Lock, 
   Eye, 
   UserCheck, 
-  Database, 
+  ShieldCheck, 
   Rocket,
   Calendar,
   Mail,
@@ -240,7 +240,7 @@ export default function PrivacyPage() {
               </div>
               
               <div className="text-center p-6 bg-card border border-border/50 rounded-2xl">
-                <Database className="w-8 h-8 text-orange-500 mx-auto mb-3" />
+                <ShieldCheck className="w-8 h-8 text-orange-500 mx-auto mb-3" />
                 <h3 className="font-semibold mb-2">Minimal Data</h3>
                 <p className="text-sm text-muted-foreground">We only collect what's necessary</p>
               </div>

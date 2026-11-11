@@ -120,6 +120,22 @@ class StartupProfileView(APIView):
     def put(self, request, *args, **kwargs):
         """Full update – all writable fields must be provided."""
         profile = self._get_profile(request.user)
+
+        if profile.onboarding_completed and "sector" in request.data:
+            req_sec = str(request.data["sector"]).strip().lower()
+            if req_sec == "social-impact":
+                req_sec = "social"
+            if req_sec and req_sec != profile.sector.lower():
+                return Response(
+                    {
+                        "detail": (
+                            f"Sector is permanently locked to '{profile.get_sector_display()}' for this account. "
+                            "Sector switching is not permitted once onboarding is completed."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         serializer = StartupProfileSerializer(profile, data=request.data)
         serializer.is_valid(raise_exception=True)
         updated_profile = services.update_profile(profile, serializer.validated_data)
@@ -133,6 +149,22 @@ class StartupProfileView(APIView):
     def patch(self, request, *args, **kwargs):
         """Partial update – only the provided fields are updated."""
         profile = self._get_profile(request.user)
+
+        if profile.onboarding_completed and "sector" in request.data:
+            req_sec = str(request.data["sector"]).strip().lower()
+            if req_sec == "social-impact":
+                req_sec = "social"
+            if req_sec and req_sec != profile.sector.lower():
+                return Response(
+                    {
+                        "detail": (
+                            f"Sector is permanently locked to '{profile.get_sector_display()}' for this account. "
+                            "Sector switching is not permitted once onboarding is completed."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         serializer = StartupProfileSerializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         updated_profile = services.update_profile(profile, serializer.validated_data)

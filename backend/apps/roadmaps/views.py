@@ -99,7 +99,11 @@ class RoadmapView(APIView):
             changed = False
             if industry:
                 new_sec = resolve_sector(industry)
-                if profile.sector != new_sec:
+                # Only update sector if profile.sector is not set or if industry explicitly specifies a valid non-default sector
+                if not profile.sector:
+                    profile.sector = new_sec
+                    changed = True
+                elif new_sec != "technology" and profile.sector != new_sec:
                     profile.sector = new_sec
                     changed = True
             if startup_name and (not profile.background_story or profile.background_story == "Startup idea"):

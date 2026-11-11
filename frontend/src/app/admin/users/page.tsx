@@ -19,10 +19,18 @@ import {
   Activity,
   CheckCircle2,
   X,
-  User as UserIcon
+  User as UserIcon,
+  Zap,
+  Lock,
+  Ban,
+  Plus,
+  SlidersHorizontal,
+  RotateCcw as ResetIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
+import { Switch } from "@/components/ui/switch"
 import {
   Table,
   TableBody,
@@ -74,6 +82,125 @@ export default function UserManagementPage() {
   // View User Profile Dialog State
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
+
+  // AI Token Management Dialog State
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false)
+  const [tokenUser, setTokenUser] = useState<AdminUser | null>(null)
+  const [tokenLimitInput, setTokenLimitInput] = useState<number | string>(100000)
+  const [freezeAiInput, setFreezeAiInput] = useState(false)
+  const [savingTokens, setSavingTokens] = useState(false)
+
+  const openTokenDialog = (user: AdminUser) => {
+    setTokenUser(user)
+    setTokenLimitInput(user.token_limit ?? 100000)
+    setFreezeAiInput(Boolean(user.ai_access_blocked))
+    setTokenDialogOpen(true)
+  }
+
+  const handleSaveTokens = async () => {
+    if (!tokenUser) return
+    const limitNum = Number(tokenLimitInput)
+    if (isNaN(limitNum) || limitNum < 0) {
+      toast.error("Please enter a valid positive number for token limit (0 for unlimited).")
+      return
+    }
+
+    try {
+      setSavingTokens(true)
+      const res = await adminApi.updateUserTokens(tokenUser.id, {
+        token_limit: limitNum,
+        ai_access_blocked: freezeAiInput,
+      })
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === tokenUser.id
+            ? {
+                ...u,
+                token_limit: res.token_limit,
+                ai_access_blocked: res.ai_access_blocked,
+              }
+            : u
+        )
+      )
+
+      setTokenUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              token_limit: res.token_limit,
+              ai_access_blocked: res.ai_access_blocked,
+            }
+          : null
+      )
+
+      toast.success(`Token quota updated for ${tokenUser.email}`)
+      setTokenDialogOpen(false)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update user tokens")
+    } finally {
+      setSavingTokens(false)
+    }
+  }
+
+  const handleResetUsedTokens = async () => {
+    if (!tokenUser) return
+    try {
+      setSavingTokens(true)
+      const res = await adminApi.updateUserTokens(tokenUser.id, { reset_used: true })
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === tokenUser.id ? { ...u, tokens_used: res.tokens_used } : u
+        )
+      )
+      setTokenUser((prev) => (prev ? { ...prev, tokens_used: res.tokens_used } : null))
+      toast.success(`Consumed tokens for ${tokenUser.email} reset to 0`)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reset tokens")
+    } finally {
+      setSavingTokens(false)
+    }
+  }
+
+  const handleGrantBonus = async (amount: number) => {
+    if (!tokenUser) return
+    try {
+      setSavingTokens(true)
+      const res = await adminApi.updateUserTokens(tokenUser.id, { add_tokens: amount })
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === tokenUser.id ? { ...u, token_limit: res.token_limit } : u
+        )
+      )
+      setTokenUser((prev) => (prev ? { ...prev, token_limit: res.token_limit } : null))
+      setTokenLimitInput(res.token_limit)
+      toast.success(`Granted +${amount.toLocaleString()} bonus tokens to ${tokenUser.email}`)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to grant bonus tokens")
+    } finally {
+      setSavingTokens(false)
+    }
+  }
+
+  const handleSetUnlimited = async () => {
+    if (!tokenUser) return
+    try {
+      setSavingTokens(true)
+      const res = await adminApi.updateUserTokens(tokenUser.id, { token_limit: 0 })
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === tokenUser.id ? { ...u, token_limit: 0 } : u
+        )
+      )
+      setTokenUser((prev) => (prev ? { ...prev, token_limit: 0 } : null))
+      setTokenLimitInput(0)
+      toast.success(`Set unlimited token quota for ${tokenUser.email}`)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to set unlimited quota")
+    } finally {
+      setSavingTokens(false)
+    }
+  }
 
   const fetchUsers = async () => {
     try {
@@ -312,10 +439,11 @@ export default function UserManagementPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50/80 dark:bg-slate-800/50">
-              <TableHead className="w-[280px]">User & Identity</TableHead>
+              <TableHead className="w-[260px]">User & Identity</TableHead>
               <TableHead>Account Status</TableHead>
               <TableHead>Role & Privileges</TableHead>
-              <TableHead>Sector / Startup</TableHead>
+              <TableHead>Sector (Locked)</TableHead>
+              <TableHead className="min-w-[190px]">AI Tokens & Quota</TableHead>
               <TableHead>Onboarding</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -324,7 +452,7 @@ export default function UserManagementPage() {
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                   {loading ? "Loading users..." : "No users matched the criteria."}
                 </TableCell>
               </TableRow>
@@ -382,13 +510,58 @@ export default function UserManagementPage() {
                       )}
                     </TableCell>
 
-                    {/* Sector */}
+                    {/* Sector (Locked) */}
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Rocket className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-1.5" title="1 Account = 1 Sector (Permanently Bound)">
+                        <Lock className="w-3 h-3 text-primary shrink-0" />
                         <span className="text-xs font-semibold capitalize">
-                          {user.sector || "Not started"}
+                          {user.sector || "Unassigned"}
                         </span>
+                      </div>
+                    </TableCell>
+
+                    {/* AI Token Usage / Quota */}
+                    <TableCell>
+                      <div className="space-y-1.5 min-w-[170px]">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-foreground flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-amber-500" />
+                            {(user.tokens_used || 0).toLocaleString()}
+                          </span>
+                          <span className="text-muted-foreground text-[11px]">
+                            / {user.token_limit === 0 ? "Unlimited" : (user.token_limit || 100000).toLocaleString()}
+                          </span>
+                        </div>
+                        {user.token_limit && user.token_limit > 0 ? (
+                          <Progress
+                            value={Math.min(100, Math.round(((user.tokens_used || 0) / user.token_limit) * 100))}
+                            className="h-1.5 bg-slate-100 dark:bg-slate-800"
+                          />
+                        ) : (
+                          <div className="h-1.5 w-full bg-emerald-500/20 rounded-full" />
+                        )}
+                        <div className="flex items-center justify-between gap-1 pt-0.5">
+                          {user.ai_access_blocked ? (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Ban className="w-2.5 h-2.5" /> AI Frozen
+                            </span>
+                          ) : user.token_limit && user.token_limit > 0 ? (
+                            <span className="text-[10px] font-bold text-muted-foreground">
+                              {Math.round(((user.tokens_used || 0) / user.token_limit) * 100)}% used
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                              Unlimited Quota
+                            </span>
+                          )}
+                          <button
+                            onClick={() => openTokenDialog(user)}
+                            className="text-[11px] font-semibold text-primary hover:underline hover:opacity-80 transition-opacity ml-auto flex items-center gap-1 cursor-pointer"
+                          >
+                            <SlidersHorizontal className="w-3 h-3" />
+                            Manage
+                          </button>
+                        </div>
                       </div>
                     </TableCell>
 
@@ -432,6 +605,13 @@ export default function UserManagementPage() {
                               className="rounded-xl cursor-pointer"
                             >
                               <Activity className="w-4 h-4 mr-2 text-primary" /> View Details
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem 
+                              onClick={() => openTokenDialog(user)}
+                              className="rounded-xl cursor-pointer text-amber-600 dark:text-amber-400 font-semibold"
+                            >
+                              <Zap className="w-4 h-4 mr-2 text-amber-500" /> Control AI Token Quota
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
 
@@ -629,8 +809,11 @@ export default function UserManagementPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Startup Sector</p>
-                  <p className="font-semibold capitalize">{selectedUser.sector || "Unspecified"}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Startup Sector (Locked)</p>
+                  <p className="font-semibold capitalize flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-primary" />
+                    {selectedUser.sector || "Unspecified"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase">Viability Score</p>
@@ -639,6 +822,46 @@ export default function UserManagementPage() {
                       ? `${selectedUser.viability_score}/100`
                       : "Not generated"}
                   </p>
+                </div>
+              </div>
+
+              {/* AI Token Usage Overview in Details Modal */}
+              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    AI Token Quota & Consumption
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setViewDialogOpen(false)
+                      openTokenDialog(selectedUser)
+                    }}
+                    className="h-7 text-xs rounded-lg gap-1 border-amber-500/30"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    Adjust Quota
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+                  <div>
+                    <span className="text-muted-foreground text-[10px] block">Consumed</span>
+                    <strong className="text-foreground">{(selectedUser.tokens_used || 0).toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-[10px] block">Quota Ceiling</span>
+                    <strong className="text-foreground">
+                      {selectedUser.token_limit === 0 ? "Unlimited" : (selectedUser.token_limit || 100000).toLocaleString()}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-[10px] block">AI Access</span>
+                    <strong className={selectedUser.ai_access_blocked ? "text-rose-600" : "text-emerald-600"}>
+                      {selectedUser.ai_access_blocked ? "Frozen" : "Active"}
+                    </strong>
+                  </div>
                 </div>
               </div>
 
@@ -658,6 +881,182 @@ export default function UserManagementPage() {
                 className="w-full rounded-2xl"
               >
                 Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {/* Manage AI Token Usage & Quota Modal */}
+      <Dialog open={tokenDialogOpen} onOpenChange={setTokenDialogOpen}>
+        {tokenUser && (
+          <DialogContent className="rounded-3xl max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                  <Zap className="w-6 h-6 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="font-heading text-lg flex items-center gap-2">
+                    Manage AI Token Quota
+                  </DialogTitle>
+                  <DialogDescription className="text-xs flex items-center gap-2 truncate">
+                    <span>{tokenUser.email}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="flex items-center gap-1 font-semibold text-foreground capitalize">
+                      <Lock className="w-3 h-3 text-primary" /> {tokenUser.sector || "No sector"}
+                    </span>
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              {/* Token Stats Cards */}
+              <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Tokens Consumed</p>
+                  <p className="text-base font-extrabold text-foreground">
+                    {(tokenUser.tokens_used || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Current Quota</p>
+                  <p className="text-base font-extrabold text-foreground">
+                    {tokenUser.token_limit === 0 ? "Unlimited" : (tokenUser.token_limit || 100000).toLocaleString()}
+                  </p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Remaining</p>
+                  <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {tokenUser.token_limit === 0 
+                      ? "Unlimited" 
+                      : Math.max(0, (tokenUser.token_limit || 100000) - (tokenUser.tokens_used || 0)).toLocaleString()
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Bonus Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center justify-between">
+                  <span>Grant Bonus Tokens</span>
+                  <span className="text-[11px] text-muted-foreground normal-case font-normal">Adds directly to user's quota ceiling</span>
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: "+10k", amount: 10000 },
+                    { label: "+50k", amount: 50000 },
+                    { label: "+100k", amount: 100000 },
+                    { label: "+250k", amount: 250000 },
+                  ].map((preset) => (
+                    <Button
+                      key={preset.label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGrantBonus(preset.amount)}
+                      disabled={savingTokens}
+                      className="rounded-xl text-xs font-bold hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      <Plus className="w-3 h-3 mr-1 text-primary" />
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Quota Ceiling Input */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    Set Custom Token Quota Limit
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSetUnlimited}
+                    className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer"
+                  >
+                    Set Unlimited (0)
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    placeholder="e.g. 150000 (0 for unlimited)"
+                    value={tokenLimitInput}
+                    onChange={(e) => setTokenLimitInput(e.target.value)}
+                    className="rounded-xl pr-20"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                    tokens
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Default new accounts start with 100,000 tokens. Enter <strong>0</strong> to grant unrestricted, unlimited usage.
+                </p>
+              </div>
+
+              {/* Reset Used Tokens Button */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <ResetIcon className="w-3.5 h-3.5 text-amber-500" />
+                    Reset Consumed Tokens
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Reset this user's consumption count back to 0 tokens used.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetUsedTokens}
+                  disabled={savingTokens || (tokenUser.tokens_used || 0) === 0}
+                  className="rounded-xl shrink-0 text-xs font-bold border-amber-500/30 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                >
+                  Reset to 0
+                </Button>
+              </div>
+
+              {/* Freeze AI Access Switch */}
+              <div className="p-3.5 rounded-2xl bg-rose-500/5 border border-rose-500/20 flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Ban className="w-3.5 h-3.5 text-rose-500" />
+                    Freeze / Suspend AI Access
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Instantly block this user from generating prompts or sending chat messages with AI Copilot.
+                  </p>
+                </div>
+                <Switch
+                  checked={freezeAiInput}
+                  onCheckedChange={setFreezeAiInput}
+                  disabled={savingTokens}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTokenDialogOpen(false)}
+                className="rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveTokens}
+                disabled={savingTokens}
+                className="rounded-xl shadow-md shadow-primary/20"
+              >
+                {savingTokens ? "Saving..." : "Save Quota Changes"}
               </Button>
             </DialogFooter>
           </DialogContent>

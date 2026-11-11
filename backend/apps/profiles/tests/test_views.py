@@ -137,3 +137,59 @@ class TestProfileStatusView:
         response = auth_client.get(reverse("profiles:status"))
         assert response.status_code == status.HTTP_200_OK
         assert response.data["generation_status"] == "processing"
+
+
+@pytest.mark.django_db
+class TestDynamicMotivationsView:
+    """Tests for GET and POST /api/v1/recommendations/motivations/."""
+
+    def test_unauthenticated_returns_401(self):
+        client = APIClient()
+        response = client.get("/api/v1/recommendations/motivations/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_motivation_authenticated(self, auth_client):
+        StartupProfileFactory(
+            user=auth_client._user,
+            sector="technology",
+            startup_name="SaaSStream",
+            problem="Developers struggle with microservice telemetry",
+            stage="mvp",
+        )
+        response = auth_client.get("/api/v1/recommendations/motivations/")
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data
+
+        # Check real founder quote metadata
+        assert "quote" in data
+        assert data["quote"]["author"] in [
+            "Patrick Collison", "Brian Chesky", "Melanie Perkins", 
+            "Jensen Huang", "Sara Blakely", "Paul Graham", "Yvon Chouinard", 
+            "Steve Jobs", "Reid Hoffman", "Tariq Mansour"
+        ]
+        assert data["quote"]["company"] != ""
+        assert data["quote"]["text"] != ""
+        assert data["quote"]["historical_context"] != ""
+
+        # Check venture relevance & directive
+        assert "venture_relevance" in data
+        assert "SaaSStream" in data["venture_relevance"]["headline"]
+        assert "daily_directive" in data
+        assert "SaaSStream" in data["daily_directive"]["title"]
+        assert "case_study" in data
+        assert "key_lesson" in data["case_study"]
+
+    def test_post_refresh_motivation(self, auth_client):
+        StartupProfileFactory(
+            user=auth_client._user,
+            sector="climate",
+            startup_name="GreenGrid",
+            problem="Grid energy waste",
+            stage="idea",
+        )
+        response = auth_client.post("/api/v1/recommendations/motivations/")
+        assert response.status_code == status.HTTP_200_OK
+        data = response.data
+        assert "quote" in data
+        assert "daily_directive" in data
+        assert data["sector"] == "climate"

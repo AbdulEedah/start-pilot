@@ -86,6 +86,9 @@ export interface AdminUser {
   sector: string;
   onboarding_completed: boolean;
   viability_score?: number | null;
+  tokens_used?: number;
+  token_limit?: number;
+  ai_access_blocked?: boolean;
 }
 
 export interface AdminUsersResponse {
@@ -221,6 +224,26 @@ export const adminApi = {
     return apiClient.get<any>(`/api/v1/admin/users/${id}/`);
   },
 
+  updateUserTokens: (
+    id: string | number,
+    data: {
+      token_limit?: number;
+      reset_used?: boolean;
+      add_tokens?: number;
+      ai_access_blocked?: boolean;
+    }
+  ): Promise<{
+    id: string;
+    email: string;
+    tokens_used: number;
+    token_limit: number;
+    ai_access_blocked: boolean;
+    remaining_tokens: number | string;
+    usage_percentage: number;
+  }> => {
+    return apiClient.post(`/api/v1/admin/users/${id}/tokens/`, data);
+  },
+
   getMentors: (params?: {
     search?: string;
     sector?: string;
@@ -301,12 +324,15 @@ export interface PublicMentor {
 export interface PublicMentorsResponse {
   mentors: PublicMentor[];
   total: number;
+  user_sector?: string;
+  filter_type?: string;
 }
 
 export const publicMentorsApi = {
-  getMentors: (params?: { sector?: string; search?: string }): Promise<PublicMentorsResponse> => {
+  getMentors: (params?: { sector?: string; filter_type?: string; search?: string }): Promise<PublicMentorsResponse> => {
     const query = new URLSearchParams();
     if (params?.sector) query.set("sector", params.sector);
+    if (params?.filter_type) query.set("filter_type", params.filter_type);
     if (params?.search) query.set("search", params.search);
     const queryString = query.toString();
     return apiClient.get<PublicMentorsResponse>(

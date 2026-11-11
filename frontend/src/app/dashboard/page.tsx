@@ -21,7 +21,8 @@ import {
   Activity,
   RefreshCw,
   ArrowUpRight,
-  TrendingDown
+  TrendingDown,
+  Edit3
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -149,14 +150,13 @@ export default function DashboardPage() {
             {isReanalyzing ? "Re-analyzing..." : "Re-analyze Viability"}
           </Button>
 
-          <Link
-            href="/onboarding"
-            className="text-xs font-semibold text-muted-foreground hover:text-primary border border-border/80 hover:border-primary/40 px-3 py-2 rounded-xl flex items-center gap-1.5 bg-card/50 transition-colors shadow-xs"
-            title="To change your sector, you must return to Onboarding"
+          <div
+            className="text-xs font-semibold text-muted-foreground border border-border/80 px-3 py-2 rounded-xl flex items-center gap-1.5 bg-card/50 shadow-xs cursor-default"
+            title="Your account is permanently locked to this sector (1 Account = 1 Sector)"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Change Sector
-          </Link>
+            <Lock className="w-3.5 h-3.5 text-primary" />
+            <span>Sector Locked: <strong className="text-foreground capitalize">{activeSector.name}</strong></span>
+          </div>
         </div>
       </div>
 
@@ -293,10 +293,10 @@ export default function DashboardPage() {
                   {(viabilityReport.strengths && viabilityReport.strengths.length > 0 
                     ? viabilityReport.strengths.slice(0, 4) 
                     : [
-                        `High-demand wedge in ${activeSector.name}`,
-                        "Strong founder-problem alignment",
-                        "Capital-efficient delivery model",
-                        "Scalable repeat usage potential"
+                        `High-demand commercial wedge in ${activeSector.name}`,
+                        `Direct problem-solution alignment for ${activeSector.targetAudience}`,
+                        `Capital-efficient execution within ${activeSector.marketSize} TAM`,
+                        "Defensible workflow lock-in and high repeat customer utility"
                       ]
                   ).map((s, idx) => (
                     <div key={idx} className="flex items-start gap-2 p-2.5 rounded-xl bg-muted/40 text-xs">
@@ -333,9 +333,9 @@ export default function DashboardPage() {
                   {(viabilityReport.risks && viabilityReport.risks.length > 0
                     ? viabilityReport.risks.slice(0, 3)
                     : [
-                        "Customer acquisition friction in early stage",
-                        "Incumbent competitive response speed",
-                        "Regulatory compliance in target deployment region"
+                        `Sector-specific regulatory and compliance hurdles in ${activeSector.name}`,
+                        `Customer acquisition cost vs lifetime value balance for ${activeSector.targetAudience}`,
+                        `Incumbent competitor counter-moves from players like ${activeSector.competitors.slice(0, 2).join(" & ") || "legacy providers"}`
                       ]
                   ).map((r, idx) => (
                     <div key={idx} className="p-2 rounded-xl bg-rose-500/5 border border-rose-500/15 text-xs text-foreground flex items-start gap-1.5">
@@ -352,9 +352,9 @@ export default function DashboardPage() {
                   {(viabilityReport.recommendations && viabilityReport.recommendations.length > 0
                     ? viabilityReport.recommendations.slice(0, 3)
                     : [
-                        "Conduct 10+ customer interviews this week",
-                        "Pre-sell beta access with a letter of intent",
-                        "Consult with a verified sector mentor"
+                        `Conduct 10+ validation discovery interviews with target ${activeSector.targetAudience}`,
+                        `Benchmark unit economics against the ${activeSector.marketSize} sector TAM`,
+                        `Connect with verified ${activeSector.name} sector mentors on Start Pilot`
                       ]
                   ).map((rec, idx) => (
                     <li key={idx} className="flex items-start gap-2">
@@ -387,7 +387,25 @@ export default function DashboardPage() {
               style={{ width: `${stats.roadmapProgress}%` }}
             />
           </div>
-          <p className="text-xs text-primary font-medium">{stats.roadmapProgress}% Complete</p>
+          <div className="flex items-center justify-between text-xs pt-0.5">
+            <span className="text-primary font-medium">{stats.roadmapProgress}% Complete</span>
+          </div>
+
+          <div className="pt-1">
+            <Link href="/onboarding" className="block">
+              {stats.roadmapProgress === 100 ? (
+                <Button variant="outline" size="sm" className="w-full rounded-full gap-1.5 font-bold text-xs hover:border-primary/50 hover:bg-primary/5">
+                  <Edit3 className="w-3.5 h-3.5 text-primary" />
+                  Edit Onboarding Info
+                </Button>
+              ) : (
+                <Button size="sm" className="w-full rounded-full gap-1.5 font-bold text-xs shadow-sm shadow-primary/20">
+                  <Rocket className="w-3.5 h-3.5" />
+                  Complete Onboarding
+                </Button>
+              )}
+            </Link>
+          </div>
         </div>
 
         <div className="p-6 rounded-3xl bg-card border border-border/50 space-y-4 shadow-xs">
@@ -410,11 +428,12 @@ export default function DashboardPage() {
             <Layers className="w-6 h-6 text-amber-500" />
           </div>
           <div>
-            <h3 className="font-bold">Active Sector</h3>
+            <h3 className="font-bold">Active Sector Focus</h3>
             <p className="text-sm text-muted-foreground">{activeSector.name}</p>
           </div>
-          <div className="text-xs text-amber-600 font-medium">
-            TAM: {activeSector.marketSize}
+          <div className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center justify-between">
+            <span>TAM: {activeSector.marketSize}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 font-bold uppercase">Locked</span>
           </div>
         </div>
 
@@ -426,10 +445,100 @@ export default function DashboardPage() {
             <h3 className="font-bold">Platform Status</h3>
             <p className="text-sm text-muted-foreground">Unlimited intelligence</p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
+          <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             All systems active
           </div>
+        </div>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* SECTOR INTELLIGENCE & MARKET LANDSCAPE                      */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className="p-6 md:p-8 rounded-3xl bg-card border border-border/60 space-y-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-2xl ${activeSector.bgGradient} border ${activeSector.badgeColor} shrink-0`}>
+              <Layers className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold font-heading">
+                  {activeSector.name} Market Intelligence & Alignment
+                </h2>
+                <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${activeSector.badgeColor}`}>
+                  Active Context
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                All platform intelligence, AI Copilot, and roadmap tasks are synchronized with your chosen sector.
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0 self-start sm:self-auto bg-muted/60 px-3 py-1.5 rounded-full border border-border"
+            title="1 Account = 1 Sector. Sector switching is disabled."
+          >
+            <Lock className="w-3.5 h-3.5 text-primary" />
+            <span>1 Account = 1 Sector (Locked)</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Market Size & Target Audience */}
+          <div className="p-4 rounded-2xl bg-accent/30 border border-border/50 space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Market Size & Target Profile</span>
+            <div className="space-y-1">
+              <p className="text-2xl font-extrabold text-foreground">{activeSector.marketSize}</p>
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                <strong className="text-foreground">Audience:</strong> {activeSector.targetAudience}
+              </p>
+            </div>
+          </div>
+
+          {/* Key Sector Metrics */}
+          <div className="p-4 rounded-2xl bg-accent/30 border border-border/50 space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Critical Industry KPIs</span>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {activeSector.keyMetrics.map((metric, i) => (
+                <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-background border border-border/60 text-foreground">
+                  {metric}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Sector Competitors & Incumbents */}
+          <div className="p-4 rounded-2xl bg-accent/30 border border-border/50 space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Known Players & Benchmark TAM</span>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {activeSector.competitors.map((comp, i) => (
+                <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-background border border-border/60 text-muted-foreground">
+                  {comp}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Sector Copilot Quick Launch Banner */}
+        <div className={`p-4 rounded-2xl border ${activeSector.badgeColor} bg-gradient-to-r ${activeSector.bgGradient} flex flex-col md:flex-row items-start md:items-center justify-between gap-4`}>
+          <div className="space-y-1 flex-1">
+            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              {activeSector.name} Copilot Guidance
+            </p>
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              "{activeSector.copilotGreeting}"
+            </p>
+          </div>
+          <Link href="/dashboard/chat">
+            <Button size="sm" className="rounded-full font-bold shrink-0 text-xs shadow-sm">
+              <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
+              Launch Sector Copilot
+            </Button>
+          </Link>
         </div>
       </div>
 

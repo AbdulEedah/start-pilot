@@ -101,6 +101,37 @@ class TestAdminUsers:
         regular_user.refresh_from_db()
         assert regular_user.is_active is False
 
+    def test_token_control_update_limit_and_bonus(self, api_client, admin_user, regular_user):
+        api_client.force_authenticate(user=admin_user)
+        # 1. Update limit
+        res = api_client.post(f"/api/v1/admin/users/{regular_user.id}/tokens/", {"token_limit": 200000}, format="json")
+        assert res.status_code == status.HTTP_200_OK
+        assert res.data["token_limit"] == 200000
+
+        # 2. Add bonus tokens
+        res2 = api_client.post(f"/api/v1/admin/users/{regular_user.id}/tokens/", {"add_tokens": 50000}, format="json")
+        assert res2.status_code == status.HTTP_200_OK
+        assert res2.data["token_limit"] == 250000
+
+    def test_token_control_reset_used_and_freeze(self, api_client, admin_user, regular_user):
+        regular_user.tokens_used = 15000
+        regular_user.save()
+
+        api_client.force_authenticate(user=admin_user)
+        # Reset used and freeze AI
+        res = api_client.post(
+            f"/api/v1/admin/users/{regular_user.id}/tokens/",
+            {"reset_used": True, "ai_access_blocked": True},
+            format="json"
+        )
+        assert res.status_code == status.HTTP_200_OK
+        assert res.data["tokens_used"] == 0
+        assert res.data["ai_access_blocked"] is True
+
+        regular_user.refresh_from_db()
+        assert regular_user.tokens_used == 0
+        assert regular_user.ai_access_blocked is True
+
 
 @pytest.mark.django_db
 class TestAdminContentAndSettings:
@@ -132,3 +163,91 @@ class TestAdminContentAndSettings:
         save_res = api_client.post("/api/v1/admin/settings/", {"platform_name": "Start Pilot Pro"}, format="json")
         assert save_res.status_code == status.HTTP_200_OK
         assert SystemSetting.get_setting("platform_config")["platform_name"] == "Start Pilot Pro"
+
+
+@pytest.mark.django_db
+class TestPublicMentorsScoping:
+    def test_unauthenticated_forbidden(self, api_client):
+        response = api_client.get("/api/v1/mentors/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_founder_strictly_scoped_to_own_sector_and_all(self, api_client, regular_user):
+        from apps.admin_panel.models import Mentor
+        StartupProfile.objects.create(
+            user=regular_user,
+            sector="technology",
+            background_story="Tech founder",
+            problem="DevOps complexity",
+        )
+        Mentor.objects.create(name="Tech Mentor", sector="technology", is_active=True, rating=5.0)
+        Mentor.objects.create(name="Health Mentor", sector="healthcare", is_active=True, rating=5.0)
+        Mentor.objects.create(name="Cross Sector Advisor", sector="all", is_active=True, rating=5.0)
+
+        api_client.force_authenticate(user=regular_user)
+        res = api_client.get("/api/v1/mentors/")
+        assert res.status_code == status.HTTP_200_OK
+
+        names = [m["name"] for m in res.data["mentors"]]
+        assert "Tech Mentor" in names
+        assert "Cross Sector Advisor" in names
+        assert "Health Mentor" not in names
+
+    def test_founder_filter_types(self, api_client, regular_user):
+        from apps.admin_panel.models import Mentor
+        StartupProfile.objects.create(
+            user=regular_user,
+            sector="technology",
+            background_story="Tech founder",
+            problem="DevOps complexity",
+        )
+        Mentor.objects.create(name="Tech Mentor", sector="technology", is_active=True, rating=5.0)
+        Mentor.objects.create(name="Universal Advisor", sector="all", is_active=True, rating=5.0)
+
+        api_client.force_authenticate(user=regular_user)
+
+        # 1. sector_only
+        res_sec = api_client.get("/api/v1/mentors/?filter_type=sector_only")
+        assert res_sec.status_code == status.HTTP_200_OK
+        sec_names = [m["name"] for m in res_sec.data["mentors"]]
+        assert "Tech Mentor" in sec_names
+        assert "Universal Advisor" not in sec_names
+
+        # 2. cross_sector
+        res_cross = api_client.get("/api/v1/mentors/?filter_type=cross_sector")
+        assert res_cross.status_code == status.HTTP_200_OK
+        cross_names = [m["name"] for m in res_cross.data["mentors"]]
+        assert "Universal Advisor" in cross_names
+        assert "Tech Mentor" not in cross_names
+
+    def test_founder_cannot_bypass_scope_via_param(self, api_client, regular_user):
+        from apps.admin_panel.models import Mentor
+        StartupProfile.objects.create(
+            user=regular_user,
+            sector="technology",
+            background_story="Tech founder",
+            problem="DevOps complexity",
+        )
+        Mentor.objects.create(name="Tech Mentor", sector="technology", is_active=True, rating=5.0)
+        Mentor.objects.create(name="Agri Mentor", sector="agriculture", is_active=True, rating=5.0)
+        Mentor.objects.create(name="Universal Advisor", sector="all", is_active=True, rating=5.0)
+
+        api_client.force_authenticate(user=regular_user)
+        # Attempt to request agriculture sector
+        res = api_client.get("/api/v1/mentors/?sector=agriculture")
+        assert res.status_code == status.HTTP_200_OK
+        names = [m["name"] for m in res.data["mentors"]]
+        assert "Agri Mentor" not in names
+        assert "Tech Mentor" in names
+        assert "Universal Advisor" in names
+
+    def test_staff_can_view_any_sector(self, api_client, admin_user):
+        from apps.admin_panel.models import Mentor
+        Mentor.objects.create(name="Health Mentor", sector="healthcare", is_active=True, rating=5.0)
+        Mentor.objects.create(name="Universal Advisor", sector="all", is_active=True, rating=5.0)
+
+        api_client.force_authenticate(user=admin_user)
+        res = api_client.get("/api/v1/mentors/?sector=healthcare")
+        assert res.status_code == status.HTTP_200_OK
+        names = [m["name"] for m in res.data["mentors"]]
+        assert "Health Mentor" in names
+        assert "Universal Advisor" in names

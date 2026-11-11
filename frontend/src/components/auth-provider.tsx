@@ -9,7 +9,8 @@ import React, {
 } from "react";
 import { apiClient } from "@/lib/api-client";
 import { authApi, type User } from "@/lib/api/auth";
-import { getStoredSector, setStoredSector } from "@/lib/sector-utils";
+import { profilesApi } from "@/lib/api/profiles";
+import { getStoredSector, setStoredSector, normalizeSectorId } from "@/lib/sector-utils";
 
 interface AuthContextType {
   isOnline: boolean;
@@ -44,6 +45,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .then((userData) => {
           setUser(userData);
           setIsAuthenticated(true);
+          // Sync founder's database sector to avoid any client mix-up
+          if (userData.sector) {
+            const norm = normalizeSectorId(userData.sector);
+            setStoredSector(norm);
+            setSectorState(norm);
+          } else {
+            profilesApi.getProfile().then((prof) => {
+              if (prof && prof.sector) {
+                const norm = normalizeSectorId(prof.sector);
+                setStoredSector(norm);
+                setSectorState(norm);
+              }
+            }).catch(() => {});
+          }
         })
         .catch(() => {
           // Token invalid/expired – clear it
@@ -102,6 +117,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(response.user);
         setIsAuthenticated(true);
         setIsLoading(false);
+        if (response.user.sector) {
+          const norm = normalizeSectorId(response.user.sector);
+          setStoredSector(norm);
+          setSectorState(norm);
+        } else {
+          try {
+            const prof = await profilesApi.getProfile();
+            if (prof && prof.sector) {
+              const norm = normalizeSectorId(prof.sector);
+              setStoredSector(norm);
+              setSectorState(norm);
+            }
+          } catch (_) {}
+        }
         return true;
       } catch (error: any) {
         const detail =
@@ -141,6 +170,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(response.user);
         setIsAuthenticated(true);
         setIsLoading(false);
+        if (response.user.sector) {
+          const norm = normalizeSectorId(response.user.sector);
+          setStoredSector(norm);
+          setSectorState(norm);
+        } else {
+          try {
+            const prof = await profilesApi.getProfile();
+            if (prof && prof.sector) {
+              const norm = normalizeSectorId(prof.sector);
+              setStoredSector(norm);
+              setSectorState(norm);
+            }
+          } catch (_) {}
+        }
         return true;
       } catch (error: any) {
         const firstError =

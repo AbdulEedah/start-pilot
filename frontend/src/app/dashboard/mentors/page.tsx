@@ -54,7 +54,7 @@ export default function MentorsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMentor, setSelectedMentor] = useState<PublicMentor | null>(null)
   const [selectedStoryMentor, setSelectedStoryMentor] = useState<PublicMentor | null>(null)
-  const [selectedSector, setSelectedSector] = useState<string>("all")
+  const [filterType, setFilterType] = useState<"all" | "sector_only" | "cross_sector_only">("all")
   const [searchTerm, setSearchTerm] = useState("")
 
   // Ask Question / Contact modal state
@@ -81,7 +81,7 @@ export default function MentorsPage() {
     try {
       setLoading(true)
       const res = await publicMentorsApi.getMentors({
-        sector: selectedSector !== "all" ? selectedSector : undefined,
+        filter_type: filterType,
         search: searchTerm.trim() || undefined,
       })
       if (res && res.mentors) {
@@ -99,7 +99,7 @@ export default function MentorsPage() {
       fetchMentors()
     }, 250)
     return () => clearTimeout(timer)
-  }, [selectedSector, searchTerm])
+  }, [filterType, searchTerm])
 
   const askMentor = async (mentor: PublicMentor, qText: string) => {
     if (!qText.trim()) {
@@ -188,30 +188,34 @@ export default function MentorsPage() {
         </div>
       </div>
 
-      {/* Sector Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        {[
-          { id: "all", label: "All Sectors" },
-          { id: activeSectorId, label: `My Sector (${activeSector.name})` },
-          { id: "technology", label: "Technology" },
-          { id: "healthcare", label: "Healthcare" },
-          { id: "finance", label: "Finance & Fintech" },
-          { id: "consumer", label: "Consumer & Retail" },
-          { id: "climate", label: "Climate & Energy" },
-          { id: "ai", label: "AI & Data" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setSelectedSector(tab.id)}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
-              selectedSector === tab.id
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-card border border-border/60 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Scoped Advisor Filter Tabs (Founder's Sector + Cross-Sector Advisors) */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { id: "all", label: "All Relevant Advisors", count: mentors.length },
+            { id: "sector_only", label: `★ ${activeSector.name} Specialists` },
+            { id: "cross_sector_only", label: "Cross-Sector Advisors (All Industries)" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilterType(tab.id as any)}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${
+                filterType === tab.id
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-card border border-border/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/15 flex items-center gap-2.5 text-xs text-muted-foreground">
+          <Sparkles className="w-4 h-4 text-primary shrink-0" />
+          <span>
+            Strictly tailored to your venture: showing verified <strong className="text-foreground">{activeSector.name}</strong> industry specialists alongside cross-sector advisors who mentor founders across all startup stages.
+          </span>
+        </div>
       </div>
 
       {/* Mentors Grid */}
@@ -223,17 +227,17 @@ export default function MentorsPage() {
           <div className="space-y-1">
             <h3 className="text-xl font-bold font-heading">No Mentors Found</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              {searchTerm || selectedSector !== "all"
-                ? "No mentors matched your current search. Try switching to 'All Sectors' or clearing the search."
-                : "New mentors are currently being onboarded by our platform administrators."}
+              {searchTerm || filterType !== "all"
+                ? "No mentors matched your current filter. Try resetting to 'All Relevant Advisors' or clearing your search term."
+                : "Advisors for this category are currently being onboarded by our team."}
             </p>
           </div>
-          {(searchTerm || selectedSector !== "all") && (
+          {(searchTerm || filterType !== "all") && (
             <Button
               variant="outline"
               onClick={() => {
                 setSearchTerm("")
-                setSelectedSector("all")
+                setFilterType("all")
               }}
               className="rounded-full"
             >
@@ -277,9 +281,15 @@ export default function MentorsPage() {
                     <div>
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="text-xl font-bold font-heading truncate">{mentor.name}</h3>
-                        <Badge variant="outline" className="rounded-full text-[10px] uppercase font-bold shrink-0 capitalize">
-                          {mentor.sector}
-                        </Badge>
+                        {mentor.sector === "all" ? (
+                          <Badge className="rounded-full text-[10px] font-bold shrink-0 bg-primary/15 text-primary border border-primary/25 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-primary" /> Cross-Sector
+                          </Badge>
+                        ) : (
+                          <Badge className="rounded-full text-[10px] font-bold shrink-0 bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/25 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-blue-500" /> {activeSector.name} Specialist
+                          </Badge>
+                        )}
                       </div>
 
                       <p className="text-sm text-primary font-semibold truncate flex items-center gap-1.5 mt-0.5">

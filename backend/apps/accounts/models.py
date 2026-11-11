@@ -131,6 +131,23 @@ class User(AbstractUser):
         help_text="Role determining platform permissions: user, admin, or super_admin.",
     )
 
+    # ── AI Token Usage Control ────────────────────────────────────────────────
+    tokens_used = models.PositiveIntegerField(
+        default=0,
+        verbose_name="AI tokens used",
+        help_text="Cumulative number of AI tokens consumed by this user.",
+    )
+    token_limit = models.PositiveIntegerField(
+        default=100000,
+        verbose_name="AI token limit",
+        help_text="Maximum AI tokens allowed for this user. 0 means unlimited.",
+    )
+    ai_access_blocked = models.BooleanField(
+        default=False,
+        verbose_name="AI access blocked",
+        help_text="If True, AI generation and Copilot chat are frozen for this user by admin.",
+    )
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]
 

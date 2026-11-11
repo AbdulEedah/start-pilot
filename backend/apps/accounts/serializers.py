@@ -21,6 +21,9 @@ class UserSerializer(serializers.ModelSerializer):
     Returned by GET /api/v1/auth/me/.
     """
 
+    sector = serializers.SerializerMethodField()
+    onboarding_completed = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -34,8 +37,31 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "is_staff",
             "is_superuser",
+            "sector",
+            "onboarding_completed",
+            "tokens_used",
+            "token_limit",
+            "ai_access_blocked",
         ]
         read_only_fields = fields
+
+    def get_sector(self, obj) -> str:
+        try:
+            profile = getattr(obj, "startup_profile", None)
+            if profile and profile.sector:
+                return str(profile.sector)
+        except Exception:
+            pass
+        return ""
+
+    def get_onboarding_completed(self, obj) -> bool:
+        try:
+            profile = getattr(obj, "startup_profile", None)
+            if profile:
+                return bool(profile.onboarding_completed)
+        except Exception:
+            pass
+        return False
 
 
 class RegisterSerializer(serializers.ModelSerializer):

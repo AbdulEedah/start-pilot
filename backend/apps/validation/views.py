@@ -49,10 +49,28 @@ class ValidationReportView(APIView):
             if cached:
                 return Response(cached)
 
-        profile, _ = StartupProfile.objects.get_or_create(
-            user=request.user,
-            defaults={"sector": "technology", "problem": "Startup venture idea", "city": "Global"}
-        )
+        profile = StartupProfile.objects.filter(user=request.user).first()
+        if not profile:
+            from apps.profiles.models import OnboardingSession
+            session = OnboardingSession.objects.filter(user=request.user).order_by("-updated_at").first()
+            sec = session.sector if session and session.sector else "technology"
+            prob = (session.form_data or {}).get("problem") if session else "Startup venture idea"
+            profile = StartupProfile.objects.create(
+                user=request.user,
+                sector=sec,
+                problem=prob or "Startup venture idea",
+                city="Global",
+                country="Global",
+                team_status="solo",
+                time_commitment="full",
+                onboarding_completed=True,
+            )
+        elif not profile.sector or profile.sector == "technology":
+            from apps.profiles.models import OnboardingSession
+            session = OnboardingSession.objects.filter(user=request.user).order_by("-updated_at").first()
+            if session and session.sector and session.sector != profile.sector:
+                profile.sector = session.sector
+                profile.save(update_fields=["sector"])
 
         try:
             report = services.get_report_for_profile(profile)
@@ -82,10 +100,28 @@ class ReanalyzeValidationView(APIView):
         cache_key = f"validation_report:user:{request.user.id}"
         cache.delete(cache_key)
 
-        profile, _ = StartupProfile.objects.get_or_create(
-            user=request.user,
-            defaults={"sector": "technology", "problem": "Startup venture idea", "city": "Global"}
-        )
+        profile = StartupProfile.objects.filter(user=request.user).first()
+        if not profile:
+            from apps.profiles.models import OnboardingSession
+            session = OnboardingSession.objects.filter(user=request.user).order_by("-updated_at").first()
+            sec = session.sector if session and session.sector else "technology"
+            prob = (session.form_data or {}).get("problem") if session else "Startup venture idea"
+            profile = StartupProfile.objects.create(
+                user=request.user,
+                sector=sec,
+                problem=prob or "Startup venture idea",
+                city="Global",
+                country="Global",
+                team_status="solo",
+                time_commitment="full",
+                onboarding_completed=True,
+            )
+        elif not profile.sector or profile.sector == "technology":
+            from apps.profiles.models import OnboardingSession
+            session = OnboardingSession.objects.filter(user=request.user).order_by("-updated_at").first()
+            if session and session.sector and session.sector != profile.sector:
+                profile.sector = session.sector
+                profile.save(update_fields=["sector"])
 
         try:
             report = services.generate_validation_report(profile)

@@ -16,7 +16,7 @@ from apps.accounts.tests.factories import (
 )
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestRegisterUser:
     """Tests for the register_user service."""
 
@@ -38,7 +38,7 @@ class TestRegisterUser:
         assert user.password != "Pass1234!"
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestRequestPasswordReset:
     """Tests for the request_password_reset service."""
 

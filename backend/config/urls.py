@@ -8,6 +8,7 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from apps.admin_panel.views import PublicMentorsView
+from apps.profiles.views_recommendations import DynamicMotivationsView
 
 urlpatterns = [
     # Django Admin
@@ -22,6 +23,7 @@ urlpatterns = [
     path("api/v1/notifications/", include("apps.notifications.urls", namespace="notifications")),
     path("api/v1/admin/", include("apps.admin_panel.urls", namespace="admin_panel")),
     path("api/v1/mentors/", PublicMentorsView.as_view(), name="public-mentors"),
+    path("api/v1/recommendations/motivations/", DynamicMotivationsView.as_view(), name="dynamic-motivations"),
     path("api/v1/", include("apps.core.urls", namespace="core")),
 
     # API Documentation

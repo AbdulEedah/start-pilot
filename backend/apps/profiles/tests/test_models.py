@@ -49,3 +49,11 @@ class TestStartupProfileModel:
         assert "technology" in valid_sectors
         assert "climate" in valid_sectors
         assert len(valid_sectors) == 12
+
+    def test_sector_lock_rejects_change_after_onboarding(self):
+        """Once onboarding is completed, changing sector must be rejected."""
+        profile = StartupProfileFactory(sector="technology", onboarding_completed=True)
+        profile.sector = "fintech"
+        with pytest.raises(ValidationError) as exc:
+            profile.clean()
+        assert "permanently locked" in str(exc.value)

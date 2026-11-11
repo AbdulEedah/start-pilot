@@ -88,6 +88,20 @@ class StartupProfile(BaseModel):
         verbose_name="sector",
         help_text="Industry sector the startup operates in.",
     )
+    startup_name = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="startup name",
+        help_text="Name or working title of the startup venture.",
+    )
+    elevator_pitch = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="elevator pitch",
+        help_text="One-sentence value proposition or hook.",
+    )
     background_story = models.TextField(
         verbose_name="background story",
         help_text="Founder's background and what led them to this idea.",
@@ -95,6 +109,25 @@ class StartupProfile(BaseModel):
     problem = models.TextField(
         verbose_name="problem",
         help_text="The core problem the startup is solving.",
+    )
+    solution = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="proposed solution",
+        help_text="The proposed solution and how it uniquely solves the core problem.",
+    )
+    target_audience = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="target audience",
+        help_text="Ideal customer profile (ICP) and primary target user base.",
+    )
+    stage = models.CharField(
+        max_length=50,
+        blank=True,
+        default="idea",
+        verbose_name="venture stage",
+        help_text="Current stage of the venture (idea, prototype, mvp, beta, revenue).",
     )
 
     # ── Location ─────────────────────────────────────────────────────────────
@@ -175,7 +208,10 @@ class StartupProfile(BaseModel):
         return f"StartupProfile(user={self.user.email}, sector={self.sector})"
 
     def clean(self):
-        """Validate that available_resources has the expected top-level keys."""
+        """
+        Validate available_resources and enforce strict 1-account-to-1-sector rule:
+        Once onboarding is completed, the sector cannot be changed.
+        """
         if self.available_resources:
             required_keys = {"financial", "human", "assets", "time"}
             provided_keys = set(self.available_resources.keys())
@@ -189,8 +225,27 @@ class StartupProfile(BaseModel):
                     }
                 )
 
+        if self.pk:
+            old = StartupProfile.objects.filter(pk=self.pk).values("sector", "onboarding_completed").first()
+            if old and old["onboarding_completed"]:
+                old_sec = old["sector"] or ""
+                current_sec = self.sector or ""
+                if current_sec == "social-impact":
+                    current_sec = "social"
+                if old_sec and current_sec and current_sec != old_sec:
+                    raise ValidationError(
+                        {
+                            "sector": (
+                                f"Sector is permanently locked to '{old_sec}' for this account. "
+                                "Sector switching is not permitted once onboarding is completed."
+                            )
+                        }
+                    )
+
     def save(self, *args, **kwargs):
         """Ensure available_resources has a default structure if not provided."""
+        if self.sector == "social-impact":
+            self.sector = "social"
         if not self.available_resources:
             self.available_resources = DEFAULT_AVAILABLE_RESOURCES.copy()
         super().save(*args, **kwargs)

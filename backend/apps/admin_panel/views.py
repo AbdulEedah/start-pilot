@@ -379,6 +379,9 @@ class AdminUsersView(APIView):
                 "sector": sector_name,
                 "onboarding_completed": has_profile,
                 "viability_score": validation_scores.get(user.id, None),
+                "tokens_used": getattr(user, "tokens_used", 0),
+                "token_limit": getattr(user, "token_limit", 100000),
+                "ai_access_blocked": getattr(user, "ai_access_blocked", False),
             })
 
         return Response({
@@ -484,6 +487,9 @@ class AdminUserDetailView(APIView):
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
             "is_email_verified": user.is_email_verified,
+            "tokens_used": user.tokens_used,
+            "token_limit": user.token_limit,
+            "ai_access_blocked": user.ai_access_blocked,
             "date_joined": user.date_joined.strftime("%Y-%m-%d %H:%M"),
             "profile": profile_data,
         })
@@ -535,6 +541,23 @@ class AdminUserDetailView(APIView):
         if "full_name" in request.data:
             user.full_name = request.data["full_name"].strip()
 
+        # Token usage & quota controls
+        if "token_limit" in request.data:
+            try:
+                user.token_limit = max(0, int(request.data["token_limit"]))
+            except (ValueError, TypeError):
+                pass
+
+        if "tokens_used" in request.data:
+            try:
+                user.tokens_used = max(0, int(request.data["tokens_used"]))
+            except (ValueError, TypeError):
+                pass
+
+        if "ai_access_blocked" in request.data:
+            val = request.data["ai_access_blocked"]
+            user.ai_access_blocked = val.lower() in ("true", "1") if isinstance(val, str) else bool(val)
+
         user.save()
         return Response({
             "id": str(user.id),
@@ -544,6 +567,9 @@ class AdminUserDetailView(APIView):
             "status": "Active" if user.is_active else "Suspended",
             "is_staff": user.is_staff,
             "is_superuser": user.is_superuser,
+            "tokens_used": user.tokens_used,
+            "token_limit": user.token_limit,
+            "ai_access_blocked": user.ai_access_blocked,
         })
 
     def delete(self, request, pk):
@@ -575,6 +601,64 @@ class AdminUserDetailView(APIView):
 
         user.delete()
         return Response({"detail": "User account successfully removed."}, status=status.HTTP_200_OK)
+
+
+class AdminUserTokenControlView(APIView):
+    """
+    POST /api/v1/admin/users/<pk>/tokens/
+    Dedicated administrative token usage & quota control endpoint:
+      - token_limit: set custom quota limit (integer, 0 for unlimited)
+      - reset_used: boolean, if true resets tokens_used to 0
+      - add_tokens: integer, grants bonus tokens to limit
+      - ai_access_blocked: boolean, freeze/unfreeze AI access
+    """
+    permission_classes = [IsAdminOrSuperAdmin]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        updated = False
+
+        if "reset_used" in data and bool(data["reset_used"]):
+            user.tokens_used = 0
+            updated = True
+
+        if "token_limit" in data:
+            try:
+                user.token_limit = max(0, int(data["token_limit"]))
+                updated = True
+            except (ValueError, TypeError):
+                pass
+
+        if "add_tokens" in data:
+            try:
+                bonus = int(data["add_tokens"])
+                user.token_limit = max(0, user.token_limit + bonus)
+                updated = True
+            except (ValueError, TypeError):
+                pass
+
+        if "ai_access_blocked" in data:
+            val = data["ai_access_blocked"]
+            user.ai_access_blocked = val.lower() in ("true", "1") if isinstance(val, str) else bool(val)
+            updated = True
+
+        if updated:
+            user.save(update_fields=["tokens_used", "token_limit", "ai_access_blocked"])
+
+        return Response({
+            "id": str(user.id),
+            "email": user.email,
+            "tokens_used": user.tokens_used,
+            "token_limit": user.token_limit,
+            "ai_access_blocked": user.ai_access_blocked,
+            "remaining_tokens": max(0, user.token_limit - user.tokens_used) if user.token_limit > 0 else "Unlimited",
+            "usage_percentage": round((user.tokens_used / user.token_limit) * 100, 1) if user.token_limit > 0 else 0,
+        }, status=status.HTTP_200_OK)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -783,18 +867,60 @@ class PublicMentorsView(APIView):
     """
     GET /api/v1/mentors/
     Public founder endpoint: list active startup advisors and mentors.
-    Query params: ?sector=<str>&search=<str>
+    Enforces strict founder scoping: regular founders can only view mentors
+    in their designated startup sector and cross-sector mentors (sector="all").
+    Query params: ?filter_type=<all|sector_only|cross_sector>&sector=<str>&search=<str>
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        sector = request.query_params.get("sector", "").strip()
+        user = request.user
+        is_staff_user = (
+            getattr(user, "is_staff", False)
+            or getattr(user, "is_superuser", False)
+            or getattr(user, "role", "") in ["admin", "super_admin"]
+        )
+
+        filter_type = request.query_params.get("filter_type", "all").strip().lower()
         search = request.query_params.get("search", "").strip()
 
         queryset = Mentor.objects.filter(is_active=True).order_by("-rating")
 
-        if sector and sector != "all":
-            queryset = queryset.filter(Q(sector=sector) | Q(sector="all"))
+        user_sector = None
+        if hasattr(user, "startup_profile") and user.startup_profile and user.startup_profile.sector:
+            user_sector = str(user.startup_profile.sector).strip().lower()
+        elif hasattr(user, "sector") and user.sector:
+            user_sector = str(user.sector).strip().lower()
+
+        if not user_sector:
+            user_sector = "technology"
+
+        # Handle aliases e.g. health / healthcare
+        sector_aliases = [user_sector]
+        if user_sector in ["health", "healthcare"]:
+            sector_aliases = ["health", "healthcare"]
+
+        if not is_staff_user:
+            # Founder is strictly confined to their registered sector + cross-sector mentors ('all')
+            if filter_type in ["sector_only", "specialist"]:
+                queryset = queryset.filter(sector__in=sector_aliases)
+            elif filter_type in ["cross_sector", "cross_sector_only", "general", "all_sectors"]:
+                queryset = queryset.filter(sector="all")
+            else:
+                queryset = queryset.filter(Q(sector__in=sector_aliases) | Q(sector="all"))
+        else:
+            # Staff / admin can view any sector or filter as desired
+            req_sector = request.query_params.get("sector", "").strip().lower()
+            if req_sector and req_sector != "all":
+                req_aliases = [req_sector]
+                if req_sector in ["health", "healthcare"]:
+                    req_aliases = ["health", "healthcare"]
+                if filter_type in ["sector_only", "specialist"]:
+                    queryset = queryset.filter(sector__in=req_aliases)
+                else:
+                    queryset = queryset.filter(Q(sector__in=req_aliases) | Q(sector="all"))
+            elif filter_type in ["cross_sector", "cross_sector_only", "general"]:
+                queryset = queryset.filter(sector="all")
 
         if search:
             queryset = queryset.filter(
@@ -826,7 +952,12 @@ class PublicMentorsView(APIView):
             for m in queryset
         ]
 
-        return Response({"mentors": mentors, "total": len(mentors)})
+        return Response({
+            "mentors": mentors,
+            "total": len(mentors),
+            "user_sector": user_sector,
+            "filter_type": filter_type,
+        })
 
 
 # ─────────────────────────────────────────────────────────────────────────────

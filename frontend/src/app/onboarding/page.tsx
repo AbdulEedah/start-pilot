@@ -14,7 +14,6 @@ import {
   Bot, 
   User as UserIcon, 
   CheckCircle2, 
-  Database,
   Loader2 
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -73,6 +72,39 @@ export default function OnboardingPage() {
       }
     }
 
+    // If authenticated, load profile and advance directly to background questionnaire
+    if (isAuthenticated) {
+      profilesApi.getProfile().then((prof) => {
+        if (prof) {
+          const lockedSec = prof.sector || user?.sector || "technology"
+          setFormData({
+            sector: lockedSec,
+            background: {
+              startup_name: prof.startup_name || "",
+              elevator_pitch: prof.elevator_pitch || "",
+              problem: prof.problem || "",
+              solution: prof.solution || "",
+              target_audience: prof.target_audience || "",
+              story: prof.background_story || "",
+              country: prof.country || "",
+              state: prof.state || "",
+              city: prof.city || "",
+              experience: prof.existing_experience || "",
+              skills: Array.isArray(prof.key_skills) ? prof.key_skills.join(", ") : (prof.key_skills || ""),
+              team_status: prof.team_status || "solo",
+              time_commitment: prof.time_commitment || "full",
+              stage: prof.stage || "idea",
+              capital: String(prof.available_resources?.financial?.capital || ""),
+              resources: prof.available_resources?.notes || "",
+            }
+          })
+          setStep("background")
+        }
+      }).catch((err) => {
+        console.warn("Could not load user profile on onboarding:", err)
+      })
+    }
+
     if (existing?.chat_messages && existing.chat_messages.length > 0) {
       setChatMessages(existing.chat_messages as ChatTurn[])
     } else {
@@ -85,7 +117,7 @@ export default function OnboardingPage() {
         },
       ])
     }
-  }, [])
+  }, [isAuthenticated, user?.sector])
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -95,28 +127,43 @@ export default function OnboardingPage() {
 
   const submitPendingOnboarding = useCallback(async (pending: PendingOnboardingData) => {
     try {
-      const skillsRaw = pending.background.skills || ""
+      const bg = pending.background || {}
+      const skillsRaw = bg.skills || ""
       const skillsList = typeof skillsRaw === "string" 
         ? skillsRaw.split(",").map((s: string) => s.trim()).filter(Boolean)
         : []
 
+      const capNum = Number(String(bg.capital || "").replace(/[^0-9]/g, "")) || 0
+      const teamStatusVal = bg.team_status || "solo"
+      const timeCommitVal = bg.time_commitment || "full"
+
       const profilePayload = {
         sector: pending.sector,
-        background_story: pending.background.story || "",
-        problem: pending.background.problem || "",
-        country: pending.background.country || "Global",
-        state: pending.background.state || "",
-        city: pending.background.city || "",
-        existing_experience: pending.background.experience || "",
+        startup_name: bg.startup_name || "",
+        elevator_pitch: bg.elevator_pitch || "",
+        problem: bg.problem || "",
+        solution: bg.solution || "",
+        target_audience: bg.target_audience || "",
+        stage: bg.stage || "idea",
+        background_story: bg.story || "",
+        country: bg.country || "Global",
+        state: bg.state || "",
+        city: bg.city || "",
+        existing_experience: bg.experience || "",
         key_skills: skillsList,
+        team_status: teamStatusVal,
+        time_commitment: timeCommitVal,
         available_resources: {
-          financial: { capital: 0, savings: 0 },
-          human: { team_size: 1, cofounders: 0 },
+          financial: { capital: capNum, savings: 0 },
+          human: { 
+            team_size: teamStatusVal === "solo" ? 1 : teamStatusVal === "cofounder" ? 2 : 4, 
+            cofounders: teamStatusVal === "cofounder" ? 1 : 0 
+          },
           assets: { office_space: false, equipment: false },
-          time: { hours_per_week: 40 },
+          time: { hours_per_week: timeCommitVal === "full" ? 40 : timeCommitVal === "part" ? 25 : 15 },
+          notes: bg.resources || "",
+          stage: bg.stage || "idea",
         },
-        team_status: "solo",
-        time_commitment: "full",
       }
 
       await profilesApi.patchProfile(profilePayload)
@@ -221,7 +268,7 @@ export default function OnboardingPage() {
       } else if (lower.includes("revenue") || lower.includes("pricing") || lower.includes("charge")) {
         aiReply = `Monetization is key. In ${sec.name}, successful startups often leverage usage-based pricing or annual pilot contracts. We will validate this in your roadmap.`
       } else {
-        aiReply = `Excellent input! I have incorporated this into your venture context for ${sec.name}. Everything you share here is continuously synced to your database session so nothing is lost.`
+        aiReply = `Excellent input! I have incorporated this into your venture context for ${sec.name}. Everything you share here is automatically saved to your workspace so nothing is lost.`
       }
 
       const fullTurn: ChatTurn = {
@@ -272,17 +319,17 @@ export default function OnboardingPage() {
         onboardingData.session_id = saveRes.session_id
       }
       setIsDbSaved(true)
-      toast.success("Saved to database", {
-        description: "Your complete onboarding chat & venture details are securely stored in the DB.",
+      toast.success("Progress Saved", {
+        description: "Your venture details and chat discussion have been safely saved.",
       })
     } catch (e) {
-      console.warn("Failed saving onboarding session to backend DB:", e)
+      console.warn("Failed saving onboarding session:", e)
     }
 
     if (!isAuthenticated) {
       savePendingOnboarding(onboardingData)
-      toast.info("Please create an account to finalize setup", {
-        description: "Your onboarding session is saved in the database. Register to unlock your dashboard.",
+      toast.info("Create an account to finalize setup", {
+        description: "Your progress is safely saved. Create your account to unlock your founder dashboard.",
       })
       router.push("/register")
       setIsSubmitting(false)
@@ -295,30 +342,44 @@ export default function OnboardingPage() {
         ? skillsRaw.split(",").map((s: string) => s.trim()).filter(Boolean)
         : []
 
+      const capNum = Number(String(data.capital || "").replace(/[^0-9]/g, "")) || 0
+      const teamStatusVal = data.team_status || "solo"
+      const timeCommitVal = data.time_commitment || "full"
+
       const profilePayload = {
         sector: onboardingData.sector,
-        background_story: data.story,
-        problem: data.problem,
-        country: data.country,
-        state: data.state,
-        city: data.city,
-        existing_experience: data.experience,
+        startup_name: data.startup_name || "",
+        elevator_pitch: data.elevator_pitch || "",
+        problem: data.problem || "",
+        solution: data.solution || "",
+        target_audience: data.target_audience || "",
+        stage: data.stage || "idea",
+        background_story: data.story || "",
+        country: data.country || "Global",
+        state: data.state || "",
+        city: data.city || "",
+        existing_experience: data.experience || "",
         key_skills: skillsList,
+        team_status: teamStatusVal,
+        time_commitment: timeCommitVal,
         available_resources: {
-          financial: { capital: 0, savings: 0 },
-          human: { team_size: 1, cofounders: 0 },
+          financial: { capital: capNum, savings: 0 },
+          human: { 
+            team_size: teamStatusVal === "solo" ? 1 : teamStatusVal === "cofounder" ? 2 : 4, 
+            cofounders: teamStatusVal === "cofounder" ? 1 : 0 
+          },
           assets: { office_space: false, equipment: false },
-          time: { hours_per_week: 40 },
+          time: { hours_per_week: timeCommitVal === "full" ? 40 : timeCommitVal === "part" ? 25 : 15 },
+          notes: data.resources || "",
+          stage: data.stage || "idea",
         },
-        team_status: "solo",
-        time_commitment: "full",
       }
 
       await profilesApi.patchProfile(profilePayload)
       await profilesApi.completeOnboarding()
 
-      toast.success("Onboarding complete!", {
-        description: "Your validation report and roadmap are being generated.",
+      toast.success("Onboarding details saved!", {
+        description: "Your venture profile has been updated and synchronized with your AI dashboard.",
       })
 
       router.push("/dashboard")
@@ -347,8 +408,8 @@ export default function OnboardingPage() {
             <div className="flex flex-col">
               <span className="font-bold font-heading leading-tight">Start Pilot Onboarding</span>
               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Database className="w-2.5 h-2.5 text-emerald-500" />
-                {isDbSaved ? "DB Synced & Secured" : "Live Session Active"}
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                {isDbSaved ? "All progress saved" : "Live Workspace Active"}
               </span>
             </div>
           </div>
@@ -427,9 +488,13 @@ export default function OnboardingPage() {
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
                   <Sparkles className="w-3.5 h-3.5" /> Sector Locked: {activeSector.name}
                 </div>
-                <h1 className="text-3xl font-bold font-heading">Tell us about your venture</h1>
+                <h1 className="text-3xl font-bold font-heading">
+                  {isAuthenticated ? "Review & Edit Venture Onboarding" : "Tell us about your venture"}
+                </h1>
                 <p className="text-muted-foreground text-sm">
-                  Fill in your details below or chat with our AI Copilot to refine your problem statement. All responses are saved to the database before proceeding to register.
+                  {isAuthenticated 
+                    ? "Refine your problem, proposed solution, team, and resources. Updates directly power your AI Copilot, viability score, and milestone roadmap."
+                    : "Fill in your details below or chat with our AI Copilot to refine your problem statement. All your answers and progress are automatically saved as you go."}
                 </p>
               </div>
 
@@ -461,10 +526,12 @@ export default function OnboardingPage() {
               {mode === "form" ? (
                 <div className="space-y-4">
                   <BackgroundForm 
-                    onBack={() => setStep("sector")} 
-                    onSubmit={handleBackgroundSubmit}
+                    onBack={() => isAuthenticated ? router.push("/dashboard") : setStep("sector")} 
+                    onSubmit={handleBackgroundSubmit as any}
                     isSubmitting={isSubmitting}
                     initialValues={formData.background as any}
+                    isEditing={isAuthenticated}
+                    lockedSectorName={activeSector.name}
                   />
                 </div>
               ) : (
@@ -481,7 +548,7 @@ export default function OnboardingPage() {
                       </div>
                     </div>
                     <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30 flex items-center gap-1">
-                      <CheckCircle2 className="w-2.5 h-2.5" /> DB Auto-Saved
+                      <CheckCircle2 className="w-2.5 h-2.5" /> Auto-saved
                     </Badge>
                   </div>
 

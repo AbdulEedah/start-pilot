@@ -71,26 +71,65 @@ class RegisterView(APIView):
                     onboarding_session.is_completed = True
                     onboarding_session.save(update_fields=["user", "is_completed", "updated_at"])
 
-                    # Create or update StartupProfile
+                    # Create or update StartupProfile ensuring founder's chosen sector is saved
                     fd = onboarding_session.form_data or {}
                     skills_raw = fd.get("skills", "")
                     skills_list = [s.strip() for s in skills_raw.split(",") if s.strip()] if isinstance(skills_raw, str) else list(skills_raw)
+                    chosen_sector = onboarding_session.sector or "technology"
 
-                    profile, _ = StartupProfile.objects.get_or_create(
+                    profile, created = StartupProfile.objects.get_or_create(
                         user=user,
                         defaults={
-                            "sector": onboarding_session.sector or "technology",
-                            "background_story": fd.get("story", ""),
-                            "problem": fd.get("problem", ""),
-                            "country": fd.get("country", ""),
+                            "sector": chosen_sector,
+                            "background_story": fd.get("story", "") or "Startup venture",
+                            "problem": fd.get("problem", "") or "Solving critical market inefficiencies",
+                            "country": fd.get("country", "") or "Global",
                             "state": fd.get("state", ""),
-                            "city": fd.get("city", ""),
+                            "city": fd.get("city", "") or "Online",
                             "existing_experience": fd.get("experience", ""),
                             "key_skills": skills_list,
-                            "team_status": "solo",
-                            "time_commitment": "full",
+                            "startup_name": fd.get("startup_name", ""),
+                            "elevator_pitch": fd.get("elevator_pitch", ""),
+                            "solution": fd.get("solution", ""),
+                            "target_audience": fd.get("target_audience", ""),
+                            "stage": fd.get("stage", "idea"),
+                            "team_status": fd.get("team_status", "solo") or "solo",
+                            "time_commitment": fd.get("time_commitment", "full") or "full",
+                            "onboarding_completed": True,
                         }
                     )
+                    if not created:
+                        profile.sector = chosen_sector
+                        if fd.get("startup_name"):
+                            profile.startup_name = fd.get("startup_name")
+                        if fd.get("elevator_pitch"):
+                            profile.elevator_pitch = fd.get("elevator_pitch")
+                        if fd.get("solution"):
+                            profile.solution = fd.get("solution")
+                        if fd.get("target_audience"):
+                            profile.target_audience = fd.get("target_audience")
+                        if fd.get("stage"):
+                            profile.stage = fd.get("stage")
+                        if fd.get("team_status"):
+                            profile.team_status = fd.get("team_status")
+                        if fd.get("time_commitment"):
+                            profile.time_commitment = fd.get("time_commitment")
+                        if fd.get("story"):
+                            profile.background_story = fd.get("story")
+                        if fd.get("problem"):
+                            profile.problem = fd.get("problem")
+                        if fd.get("country"):
+                            profile.country = fd.get("country")
+                        if fd.get("state"):
+                            profile.state = fd.get("state")
+                        if fd.get("city"):
+                            profile.city = fd.get("city")
+                        if fd.get("experience"):
+                            profile.existing_experience = fd.get("experience")
+                        if skills_list:
+                            profile.key_skills = skills_list
+                        profile.onboarding_completed = True
+                        profile.save()
 
                     # Transfer all saved onboarding chat messages into a real Conversation
                     if onboarding_session.chat_messages:
@@ -102,6 +141,9 @@ class RegisterView(APIView):
                                 Message.objects.create(conversation=conv, role=m_role, content=m_content)
             except Exception as exc:
                 logger.warning("Could not associate onboarding session %s: %s", session_id, exc)
+
+        # Refresh user to populate related profile data in UserSerializer
+        user.refresh_from_db()
 
         # Auto-login: generate JWT tokens for the newly created user
         from rest_framework_simplejwt.tokens import RefreshToken

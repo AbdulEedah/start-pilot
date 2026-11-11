@@ -30,6 +30,15 @@ export type { Message, Conversation, SendMessagePayload, SendMessageResponse } f
 export { notificationsApi } from "./notifications";
 export type { Notification } from "./notifications";
 
+export { recommendationsApi } from "./recommendations";
+export type {
+  FounderQuote,
+  VentureRelevance,
+  CaseStudy,
+  DailyDirective,
+  DynamicMotivationResponse,
+} from "./recommendations";
+
 export { adminApi, publicMentorsApi } from "./admin";
 export type {
   UserRole,

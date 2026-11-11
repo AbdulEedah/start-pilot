@@ -69,11 +69,11 @@ export default function SettingsPage() {
 
             <div className="p-4 rounded-2xl bg-accent/40 border border-border/60 space-y-3">
               <div className="flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
-                  <p className="font-semibold text-foreground">Why is the sector locked in the dashboard?</p>
+                  <p className="font-semibold text-foreground">Strict 1 Account = 1 Sector Policy</p>
                   <p className="text-muted-foreground leading-relaxed">
-                    Start Pilot keeps your AI Copilot, viability scores, mentors, and roadmap tightly aligned to <strong className="text-foreground">{activeSector.name}</strong>. Sector switching is locked within the dashboard to prevent data fragmentation.
+                    Start Pilot permanently binds each founder account and email to their chosen industry (<strong className="text-foreground">{activeSector.name}</strong>). To guarantee authentic data integrity, tailored milestone roadmaps, and domain-specialized AI intelligence, sector switching is permanently locked once onboarding is completed.
                   </p>
                 </div>
               </div>
@@ -81,16 +81,14 @@ export default function SettingsPage() {
 
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/50">
               <div>
-                <p className="text-xs font-bold text-foreground">Need to switch to a different sector?</p>
-                <p className="text-xs text-muted-foreground">You can change sectors at any time by returning to Onboarding.</p>
+                <p className="text-xs font-bold text-foreground">Want to launch a venture in another industry?</p>
+                <p className="text-xs text-muted-foreground">Each account is tied to one sector only. Please register a separate account with a new email to build in a different sector.</p>
               </div>
 
-              <Link href="/onboarding">
-                <Button className="rounded-xl gap-2 text-xs font-bold shadow-md">
-                  <RotateCcw className="w-4 h-4" />
-                  Change Sector (Go to Onboarding)
-                </Button>
-              </Link>
+              <div className="px-3 py-1.5 rounded-full bg-muted border text-xs font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0">
+                <Lock className="w-3.5 h-3.5 text-primary" />
+                <span>Sector Permanently Locked</span>
+              </div>
             </div>
           </div>
 

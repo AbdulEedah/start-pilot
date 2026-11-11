@@ -10,8 +10,13 @@ export interface StartupProfile {
   id: number;
   sector: string;
   sector_display: string;
+  startup_name?: string;
+  elevator_pitch?: string;
   background_story: string;
   problem: string;
+  solution?: string;
+  target_audience?: string;
+  stage?: string;
   country: string;
   state: string;
   city: string;
@@ -40,8 +45,13 @@ export interface ProfileStatus {
 
 export interface ProfilePayload {
   sector?: string;
+  startup_name?: string;
+  elevator_pitch?: string;
   background_story?: string;
   problem?: string;
+  solution?: string;
+  target_audience?: string;
+  stage?: string;
   country?: string;
   state?: string;
   city?: string;

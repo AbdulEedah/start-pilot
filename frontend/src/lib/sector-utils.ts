@@ -554,16 +554,94 @@ export const SECTORS: Record<string, SectorDefinition> = {
   }
 };
 
+// Also expose 'social' directly to avoid any lookup failure
+SECTORS["social"] = SECTORS["social-impact"];
+
+/**
+ * Normalise any sector ID string, accounting for aliases, prefixes, and casing.
+ * Prevents sector mix-ups and false fallbacks.
+ */
+export function normalizeSectorId(raw?: string): string {
+  if (!raw) return "technology";
+  const cleaned = raw.toLowerCase().trim();
+
+  // Direct match
+  if (SECTORS[cleaned]) return SECTORS[cleaned].id;
+
+  // Canonical alias lookup
+  const aliasMap: Record<string, string> = {
+    "social": "social-impact",
+    "social impact": "social-impact",
+    "social-impact": "social-impact",
+    "esg": "social-impact",
+    "fintech": "finance",
+    "banking": "finance",
+    "crypto": "finance",
+    "finance & fintech": "finance",
+    "healthtech": "health",
+    "healthcare": "health",
+    "wellness": "health",
+    "bio": "health",
+    "health & bio": "health",
+    "agritech": "agriculture",
+    "agtech": "agriculture",
+    "farming": "agriculture",
+    "food": "agriculture",
+    "food systems": "agriculture",
+    "edtech": "education",
+    "learning": "education",
+    "skills": "education",
+    "cleantech": "climate",
+    "energy": "climate",
+    "renewables": "climate",
+    "sustainability": "climate",
+    "climate & energy": "climate",
+    "media": "production",
+    "content": "production",
+    "goods": "production",
+    "production & media": "production",
+    "tech": "technology",
+    "saas": "technology",
+    "software": "technology",
+    "it": "technology",
+    "hardware": "technology",
+    "technology & saas": "technology",
+    "logistics": "logistics",
+    "supply": "logistics",
+    "supply chain": "logistics",
+    "supply-chain": "logistics",
+    "fashion": "fashion",
+    "apparel": "fashion",
+    "retail": "fashion",
+    "ecommerce": "fashion",
+    "ai": "ai",
+    "ml": "ai",
+    "ai & machine learning": "ai",
+    "manufacturing": "manufacturing",
+    "industrial": "manufacturing",
+  };
+
+  if (aliasMap[cleaned]) {
+    return aliasMap[cleaned];
+  }
+
+  // Partial substring search
+  for (const [alias, target] of Object.entries(aliasMap)) {
+    if (cleaned.includes(alias)) {
+      return target;
+    }
+  }
+
+  return "technology";
+}
+
 /**
  * Get active sector ID from localStorage (defaults to "technology")
  */
 export function getStoredSector(): string {
   if (typeof window === "undefined") return "technology";
   const stored = localStorage.getItem("startpilot_sector") || localStorage.getItem("user_sector");
-  if (stored && SECTORS[stored]) {
-    return stored;
-  }
-  return "technology";
+  return normalizeSectorId(stored || undefined);
 }
 
 /**
@@ -571,18 +649,17 @@ export function getStoredSector(): string {
  */
 export function setStoredSector(sectorId: string): void {
   if (typeof window === "undefined") return;
-  if (SECTORS[sectorId]) {
-    localStorage.setItem("startpilot_sector", sectorId);
-    localStorage.setItem("user_sector", sectorId);
-    // Dispatch custom event for reactive updates across components
-    window.dispatchEvent(new CustomEvent("startpilot_sector_changed", { detail: sectorId }));
-  }
+  const normalized = normalizeSectorId(sectorId);
+  localStorage.setItem("startpilot_sector", normalized);
+  localStorage.setItem("user_sector", normalized);
+  // Dispatch custom event for reactive updates across components
+  window.dispatchEvent(new CustomEvent("startpilot_sector_changed", { detail: normalized }));
 }
 
 /**
  * Get full sector definition
  */
 export function getSectorDetails(sectorId?: string): SectorDefinition {
-  const activeId = sectorId || getStoredSector();
+  const activeId = normalizeSectorId(sectorId || getStoredSector());
   return SECTORS[activeId] || SECTORS["technology"];
 }

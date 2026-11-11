@@ -78,6 +78,23 @@ class SendMessageView(APIView):
         serializer = SendMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Check administrative token usage quota and frozen access
+        if getattr(request.user, "ai_access_blocked", False):
+            return Response(
+                {"detail": "Your AI access has been suspended by an administrator. Please contact support."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        token_limit = getattr(request.user, "token_limit", 100000)
+        tokens_used = getattr(request.user, "tokens_used", 0)
+        if token_limit > 0 and tokens_used >= token_limit:
+            return Response(
+                {
+                    "detail": "You have reached your allocated AI Copilot usage limit. Please contact support or your platform advisor to increase your capacity."
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         # Require an existing startup profile to send messages
         try:
             profile = StartupProfile.objects.get(user=request.user)
@@ -89,10 +106,19 @@ class SendMessageView(APIView):
 
         conversation, _ = services.get_or_create_conversation(request.user, profile)
 
+        user_text = serializer.validated_data["message"]
         assistant_message = services.send_message(
             conversation=conversation,
-            user_message=serializer.validated_data["message"],
+            user_message=user_text,
         )
+
+        # Increment user's token usage count (approx 4 chars per token)
+        try:
+            consumed = max(25, (len(user_text) + len(assistant_message.content) + 500) // 4)
+            request.user.tokens_used = getattr(request.user, "tokens_used", 0) + consumed
+            request.user.save(update_fields=["tokens_used"])
+        except Exception:
+            pass
 
         message_data = MessageSerializer(assistant_message).data
         suggested_questions = getattr(assistant_message, "suggested_questions", [])

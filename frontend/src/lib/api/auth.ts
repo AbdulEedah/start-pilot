@@ -17,6 +17,8 @@ export interface User {
   role?: "user" | "admin" | "super_admin";
   is_staff?: boolean;
   is_superuser?: boolean;
+  sector?: string;
+  onboarding_completed?: boolean;
   onboardingCompleted?: boolean;
 }
 

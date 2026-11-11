@@ -184,19 +184,14 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-card border border-border/80 px-3 py-1.5 rounded-full shadow-xs">
-            <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-2 bg-card border border-border/80 px-3 py-1.5 rounded-full shadow-xs" title="1 Account = 1 Sector (Locked)">
+            <Lock className="w-3.5 h-3.5 text-primary" />
             <span className="text-xs font-semibold">
               Sector: <span className="text-primary font-bold">{sectorDetails.name}</span>
             </span>
-            <Link
-              href="/onboarding"
-              className="ml-1 text-[11px] font-medium text-muted-foreground hover:text-primary underline flex items-center gap-1 transition-colors"
-              title="To change your sector, you must return to Onboarding"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Change in Onboarding
-            </Link>
+            <span className="ml-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              Permanently Locked
+            </span>
           </div>
 
           <Button 
