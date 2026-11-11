@@ -166,7 +166,10 @@ export default function UserManagementPage() {
     if (!tokenUser) return
     try {
       setSavingTokens(true)
-      const res = await adminApi.updateUserTokens(tokenUser.id, { add_tokens: amount })
+      const res = await adminApi.updateUserTokens(tokenUser.id, { 
+        add_tokens: amount,
+        token_limit: Math.max(0, (tokenUser.token_limit || 0) + amount)
+      })
       setUsers((prev) =>
         prev.map((u) =>
           u.id === tokenUser.id ? { ...u, token_limit: res.token_limit } : u

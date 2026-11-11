@@ -224,7 +224,7 @@ export const adminApi = {
     return apiClient.get<any>(`/api/v1/admin/users/${id}/`);
   },
 
-  updateUserTokens: (
+  updateUserTokens: async (
     id: string | number,
     data: {
       token_limit?: number;
@@ -241,7 +241,35 @@ export const adminApi = {
     remaining_tokens: number | string;
     usage_percentage: number;
   }> => {
-    return apiClient.post(`/api/v1/admin/users/${id}/tokens/`, data);
+    try {
+      return await apiClient.post(`/api/v1/admin/users/${id}/tokens/`, data);
+    } catch (err: any) {
+      // Graceful fallback for production instances where /tokens/ subpath is not yet deployed:
+      // use standard PATCH /api/v1/admin/users/<id>/
+      if (err?.status === 404 || String(err?.message || "").includes("404")) {
+        const patchPayload: Record<string, any> = {};
+        if (data.token_limit !== undefined) patchPayload.token_limit = data.token_limit;
+        if (data.reset_used) patchPayload.tokens_used = 0;
+        if (data.ai_access_blocked !== undefined) patchPayload.ai_access_blocked = data.ai_access_blocked;
+
+        const updated = await apiClient.patch<any>(`/api/v1/admin/users/${id}/`, patchPayload);
+        const used = updated.tokens_used ?? 0;
+        const limit = updated.token_limit ?? 0;
+        const remaining = limit === 0 ? "Unlimited" : Math.max(0, limit - used);
+        const usage_percentage = limit === 0 ? 0 : Math.min(100, Math.round((used / limit) * 100));
+
+        return {
+          id: String(updated.id),
+          email: updated.email,
+          tokens_used: used,
+          token_limit: limit,
+          ai_access_blocked: Boolean(updated.ai_access_blocked),
+          remaining_tokens: remaining,
+          usage_percentage,
+        };
+      }
+      throw err;
+    }
   },
 
   getMentors: (params?: {
