@@ -19,7 +19,7 @@ interface AuthContextType {
   sector: string;
   changeSector: (newSector: string) => void;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string, phone?: string, session_id?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
 }
@@ -117,11 +117,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, name: string): Promise<boolean> => {
+    async (
+      email: string,
+      password: string,
+      name: string,
+      phone?: string,
+      session_id?: string
+    ): Promise<boolean> => {
       try {
         const response = await authApi.register({
           email,
           full_name: name,
+          phone: phone || "",
+          session_id: session_id || undefined,
           password,
           password_confirm: password,
         });

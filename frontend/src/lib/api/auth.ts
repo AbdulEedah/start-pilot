@@ -10,6 +10,7 @@ export interface User {
   id: number;
   email: string;
   full_name: string;
+  phone?: string;
   avatar: string | null;
   is_email_verified: boolean;
   date_joined: string;
@@ -28,6 +29,8 @@ export interface LoginResponse {
 export interface RegisterPayload {
   email: string;
   full_name: string;
+  phone?: string;
+  session_id?: string;
   password: string;
   password_confirm: string;
 }

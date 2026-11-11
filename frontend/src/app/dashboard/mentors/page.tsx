@@ -28,6 +28,14 @@ function LinkedInIcon({ className = "w-4 h-4" }: { className?: string }) {
     </svg>
   )
 }
+
+function WhatsAppIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c4.55 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.84a8.17 8.17 0 0 1-5.82 2.41h-.01c-1.46 0-2.88-.39-4.14-1.13l-.3-.18-3.12.82.83-3.04-.2-.31a8.156 8.156 0 0 1-1.25-4.41c0-4.54 3.7-8.24 8.26-8.24m4.53 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.24-.75-.67-1.25-1.49-1.4-1.74-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.17.04-.32-.02-.45s-.56-1.35-.77-1.85c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1s.9 2.44 1.03 2.61c.13.17 1.77 2.7 4.29 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.17-.48-.29"/>
+    </svg>
+  )
+}
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -39,7 +47,7 @@ import { publicMentorsApi, type PublicMentor } from "@/lib/api"
 import { toast } from "sonner"
 
 export default function MentorsPage() {
-  const { sector: activeSectorId } = useAuth()
+  const { sector: activeSectorId, user } = useAuth()
   const activeSector = getSectorDetails(activeSectorId)
 
   const [mentors, setMentors] = useState<PublicMentor[]>([])
@@ -53,6 +61,21 @@ export default function MentorsPage() {
   const [question, setQuestion] = useState("")
   const [advice, setAdvice] = useState("")
   const [isAsking, setIsAsking] = useState(false)
+
+  const openWhatsAppDM = (mentor: PublicMentor) => {
+    const rawPhone = mentor.phone || "+14155550128"
+    const cleanPhone = rawPhone.replace(/[^0-9]/g, "")
+    const founderName = user?.full_name || "a startup founder"
+    const sectorName = activeSector.name || "Start Pilot"
+
+    const message = `Hello ${mentor.name}! I am ${founderName} from Start Pilot (${sectorName} sector). I found your mentor profile on Start Pilot and would love to connect with you regarding my startup journey.`
+
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    window.open(url, "_blank", "noopener,noreferrer")
+    toast.success(`Opening WhatsApp DM with ${mentor.name}`, {
+      description: "Connecting directly as a verified founder from Start Pilot.",
+    })
+  }
 
   const fetchMentors = async () => {
     try {
@@ -283,7 +306,7 @@ export default function MentorsPage() {
                     )}
 
                     {/* Expertise Badges */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
                       {(Array.isArray(mentor.expertise) ? mentor.expertise : []).slice(0, 3).map((exp, idx) => (
                         <Badge key={idx} variant="secondary" className="rounded-full text-xs font-normal">
                           {exp}
@@ -307,6 +330,16 @@ export default function MentorsPage() {
 
                 {/* Bottom Actions */}
                 <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-border/40">
+                  {/* WhatsApp Direct Message Button */}
+                  <Button
+                    size="sm"
+                    onClick={() => openWhatsAppDM(mentor)}
+                    className="w-full sm:flex-1 rounded-full font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
+                  >
+                    <WhatsAppIcon className="w-4 h-4 mr-2" />
+                    Message
+                  </Button>
+
                   {/* Ask Question / Contact Dialog */}
                   <Dialog>
                     <DialogTrigger asChild>
@@ -321,7 +354,7 @@ export default function MentorsPage() {
                         }}
                       >
                         <MessageCircle className="w-4 h-4 mr-2 text-primary" />
-                        Ask Advice / Contact
+                        Ask Advice
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl rounded-3xl p-6 md:p-8">
@@ -342,10 +375,30 @@ export default function MentorsPage() {
                       </DialogHeader>
                       
                       <div className="space-y-5 pt-3">
+                        {/* Direct WhatsApp Callout */}
+                        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                              Instant Founder-Mentor Chat
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Opens WhatsApp DM directly with your Start Pilot founder introduction pre-filled.
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => openWhatsAppDM(mentor)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold shrink-0 shadow-sm"
+                          >
+                            <WhatsAppIcon className="w-3.5 h-3.5 mr-1.5" />
+                            Message on WhatsApp
+                          </Button>
+                        </div>
+
                         {/* Direct Contact Channels */}
                         <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3">
                           <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                            Direct Contact Channels
+                            Other Direct Channels
                           </p>
                           <div className="flex flex-wrap items-center gap-3 text-xs">
                             <a
@@ -429,7 +482,7 @@ export default function MentorsPage() {
                     </DialogContent>
                   </Dialog>
 
-                  {/* Book Session Button */}
+                  {/* Book Session / Email Button */}
                   {mentor.calendly_url ? (
                     <a
                       href={mentor.calendly_url}

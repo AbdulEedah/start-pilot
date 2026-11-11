@@ -58,12 +58,12 @@ export default function DashboardLayout({
 
   const navLinks = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/dashboard/chat", label: "AI Copilot", icon: MessageSquare },
-    { href: "/dashboard/pitch", label: "AI Pitching", icon: Presentation },
+    { href: "/dashboard/chat", label: "AI Chat", icon: MessageSquare },
     { href: "/dashboard/roadmap", label: "Roadmap", icon: TrendingUp },
-    { href: "/dashboard/recommendations", label: "Recommendations", icon: Sparkles },
-    { href: "/dashboard/mentors", label: "Mentorship", icon: Users },
-    { href: "/dashboard/tools", label: "AI Tools Hub", icon: Cpu },
+    { href: "/dashboard/mentors", label: "Mentor", icon: Users },
+    { href: "/dashboard/pitch", label: "Pitch", icon: Presentation },
+    { href: "/dashboard/recommendations", label: "Recommendation", icon: Sparkles },
+    { href: "/dashboard/tools", label: "AI Tool Hub", icon: Cpu, badge: "Soon" },
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
     ...(user?.is_staff
       ? [{ href: "/admin", label: "Admin Center", icon: ShieldCheck, extra: "text-primary font-bold" }]
@@ -157,7 +157,12 @@ export default function DashboardLayout({
                   }`}
                 >
                   <item.icon className={`w-5 h-5 ${item.extra || ""}`} />
-                  {item.label}
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      {item.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>
@@ -203,7 +208,12 @@ export default function DashboardLayout({
               }`}
             >
               <item.icon className={`w-4 h-4 ${item.extra || ""}`} />
-              {item.label}
+              <span>{item.label}</span>
+              {item.badge && (
+                <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

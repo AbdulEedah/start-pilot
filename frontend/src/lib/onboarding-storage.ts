@@ -1,8 +1,10 @@
 const ONBOARDING_STORAGE_KEY = "startpilot_pending_onboarding"
 
 export interface PendingOnboardingData {
+  session_id?: string
   sector: string
   background: Record<string, string>
+  chat_messages?: Array<{ role: string; content: string; timestamp?: string }>
 }
 
 export function savePendingOnboarding(data: PendingOnboardingData): void {

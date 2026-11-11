@@ -52,7 +52,35 @@ export interface ProfilePayload {
   time_commitment?: string;
 }
 
+export interface OnboardingSessionPayload {
+  session_id?: string;
+  sector: string;
+  form_data?: Record<string, any>;
+  chat_messages?: Array<{ role: string; content: string; timestamp?: string }>;
+}
+
+export interface OnboardingSessionResponse {
+  status: string;
+  session_id: string;
+  sector: string;
+  messages_count: number;
+}
+
 export const profilesApi = {
+  /**
+   * Save onboarding session data & chat history to database (works unauthenticated).
+   * POST /api/v1/profile/onboarding-session/
+   */
+  saveOnboardingSession: (data: OnboardingSessionPayload) =>
+    apiClient.post<OnboardingSessionResponse>("/api/v1/profile/onboarding-session/", data, false),
+
+  /**
+   * Get saved onboarding session data by session_id.
+   * GET /api/v1/profile/onboarding-session/?session_id=<id>
+   */
+  getOnboardingSession: (sessionId: string) =>
+    apiClient.get<any>(`/api/v1/profile/onboarding-session/?session_id=${encodeURIComponent(sessionId)}`, undefined, false),
+
   /**
    * Get the current user's startup profile.
    * GET /api/v1/profile/

@@ -13,12 +13,14 @@ import {
   Download,
   Plus,
   Loader2,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { getSectorDetails } from "@/lib/sector-utils";
 import { roadmapsApi } from "@/lib/api/roadmaps";
+import { exportRoadmapToPdf, exportRoadmapToPlainText } from "@/lib/roadmap-export";
 
 interface RoadmapItem {
   id: string;
@@ -43,6 +45,7 @@ interface Roadmap {
 export default function RoadmapPage() {
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { user, isAuthenticated, sector: activeSectorId } = useAuth();
   const activeSector = getSectorDetails(activeSectorId);
@@ -181,12 +184,66 @@ export default function RoadmapPage() {
     }
   };
 
-  const handleExport = () => {
-    toast.promise(new Promise((resolve) => setTimeout(resolve, 2000)), {
-      loading: "Generating your Startup Blueprint PDF...",
-      success: "Blueprint Downloaded Successfully!",
-      error: "Failed to generate PDF",
-    });
+  const handleExportPdf = async () => {
+    if (!roadmap) {
+      toast.error("No roadmap available to export");
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      // 1. Direct client-side PDF download (works 100% offline!)
+      exportRoadmapToPdf(roadmap, {
+        fullName: user?.full_name,
+        email: user?.email,
+        sectorName: activeSector.name,
+        problemStatement: activeSector.defaultIdea.description,
+      });
+
+      toast.success("Blueprint PDF Downloaded!", {
+        description: `Downloaded StartPilot_Roadmap_${activeSector.name.replace(/[^a-zA-Z0-9_-]/g, "")}.pdf to your device.`,
+      });
+
+      // 2. Also dispatch an email copy in the background if online
+      if (user?.email) {
+        roadmapsApi.exportRoadmap(user.email).catch((err) => {
+          console.log("Background email skipped/unavailable:", err);
+        });
+      }
+    } catch (error: any) {
+      console.error("Failed to export PDF:", error);
+      toast.error("PDF Export failed", {
+        description: error?.message || "Could not generate PDF blueprint.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPlainText = () => {
+    if (!roadmap) {
+      toast.error("No roadmap available to export");
+      return;
+    }
+
+    try {
+      // Direct client-side Plain Text (.txt) download (works 100% offline!)
+      exportRoadmapToPlainText(roadmap, {
+        fullName: user?.full_name,
+        email: user?.email,
+        sectorName: activeSector.name,
+        problemStatement: activeSector.defaultIdea.description,
+      });
+
+      toast.success("Plaintext Blueprint Downloaded!", {
+        description: `Downloaded StartPilot_Roadmap_${activeSector.name.replace(/[^a-zA-Z0-9_-]/g, "")}.txt to your device.`,
+      });
+    } catch (error: any) {
+      console.error("Failed to export plaintext:", error);
+      toast.error("Plaintext Export failed", {
+        description: error?.message || "Could not generate text blueprint.",
+      });
+    }
   };
 
   const groupItemsByCategory = (items: RoadmapItem[]) => {
@@ -293,7 +350,7 @@ export default function RoadmapPage() {
             Your step-by-step path from idea to scale.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={generateRoadmap}
@@ -308,11 +365,31 @@ export default function RoadmapPage() {
             Regenerate
           </Button>
           <Button
-            onClick={handleExport}
-            className="rounded-full shadow-lg shadow-primary/20"
+            variant="outline"
+            onClick={handleExportPlainText}
+            className="rounded-full"
+            title="Download as Plaintext (.txt) directly onto your device (works offline)"
           >
-            <Download className="mr-2 h-4 w-4" />
-            Export Blueprint
+            <FileText className="mr-2 h-4 w-4" />
+            Export Plaintext
+          </Button>
+          <Button
+            onClick={handleExportPdf}
+            disabled={isExporting}
+            className="rounded-full shadow-lg shadow-primary/20"
+            title="Download as PDF blueprint directly onto your device (works offline)"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF
+              </>
+            )}
           </Button>
         </div>
       </div>

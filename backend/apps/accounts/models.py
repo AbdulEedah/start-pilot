@@ -87,6 +87,13 @@ class User(AbstractUser):
         verbose_name="full name",
         help_text="User's full display name.",
     )
+    phone = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="phone number",
+        help_text="User's contact phone number.",
+    )
     google_id = models.CharField(
         max_length=255,
         blank=True,

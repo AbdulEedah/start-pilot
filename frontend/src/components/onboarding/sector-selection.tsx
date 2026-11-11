@@ -31,25 +31,43 @@ const sectors = [
   { id: "social-impact", name: "Social Impact", icon: Users, color: "text-teal-500", bg: "bg-teal-500/10", desc: "Non-profit, Community, ESG" },
 ]
 
-export function SectorSelection({ onSelect }: { onSelect: (id: string) => void }) {
+export function SectorSelection({
+  onSelect,
+  selectedSector,
+}: {
+  onSelect: (id: string) => void
+  selectedSector?: string
+}) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {sectors.map((sector, index) => (
-        <motion.button
-          key={sector.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
-          onClick={() => onSelect(sector.id)}
-          className="group flex flex-col items-start p-6 text-left bg-card hover:bg-accent border border-border/50 hover:border-primary/50 rounded-2xl transition-all shadow-sm"
-        >
-          <div className={`p-3 rounded-xl ${sector.bg} ${sector.color} mb-4 transition-transform group-hover:scale-110`}>
-            <sector.icon className="w-6 h-6" />
-          </div>
-          <h3 className="font-bold text-lg mb-1">{sector.name}</h3>
-          <p className="text-sm text-muted-foreground">{sector.desc}</p>
-        </motion.button>
-      ))}
+      {sectors.map((sector, index) => {
+        const isSelected = selectedSector === sector.id
+        return (
+          <motion.button
+            key={sector.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            onClick={() => onSelect(sector.id)}
+            className={`group flex flex-col items-start p-6 text-left bg-card hover:bg-accent border rounded-2xl transition-all shadow-sm ${
+              isSelected ? "border-primary ring-2 ring-primary/20 bg-primary/5" : "border-border/50 hover:border-primary/50"
+            }`}
+          >
+            <div className={`p-3 rounded-xl ${sector.bg} ${sector.color} mb-4 transition-transform group-hover:scale-110`}>
+              <sector.icon className="w-6 h-6" />
+            </div>
+            <div className="flex items-center justify-between w-full mb-1">
+              <h3 className="font-bold text-lg">{sector.name}</h3>
+              {isSelected && (
+                <span className="text-[10px] font-bold text-primary uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-full">
+                  Selected
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{sector.desc}</p>
+          </motion.button>
+        )
+      })}
     </div>
   )
 }

@@ -32,7 +32,13 @@ export function AuthForm({ initialTab = "login" }: { initialTab?: "login" | "reg
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => {
+        if (v === "register") {
+          router.push("/?builder=select")
+        } else {
+          setActiveTab(v as any)
+        }
+      }} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-8">
           <TabsTrigger value="login">Login</TabsTrigger>
           <TabsTrigger value="register">Register</TabsTrigger>

@@ -204,3 +204,32 @@ class StartupProfile(BaseModel):
     def is_generation_failed(self) -> bool:
         """Return True when AI generation has failed after all retries."""
         return self.generation_status == "failed"
+
+
+class OnboardingSession(BaseModel):
+    """
+    Persists onboarding chat history, sector selection, and answers in the database
+    BEFORE the user creates an account or completes registration.
+    Linked to the User and StartupProfile once registration occurs.
+    """
+    session_id = models.CharField(max_length=100, unique=True, db_index=True)
+    sector = models.CharField(max_length=50, blank=True, default="technology")
+    form_data = models.JSONField(default=dict, blank=True)
+    chat_messages = models.JSONField(default=list, blank=True)
+    user = models.ForeignKey(
+        "accounts.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="onboarding_sessions",
+    )
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "onboarding_sessions"
+        verbose_name = "onboarding session"
+        verbose_name_plural = "onboarding sessions"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"OnboardingSession({self.session_id}, sector={self.sector})"

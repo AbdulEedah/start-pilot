@@ -165,3 +165,111 @@ class RoadmapTaskUpdateView(APIView):
         cache.delete(f"roadmap:user:{request.user.id}")
 
         return Response(RoadmapTaskSerializer(task).data, status=status.HTTP_200_OK)
+
+
+class RoadmapExportView(APIView):
+    """
+    POST /api/v1/roadmap/export/
+    Send the founder's roadmap as an email with an attached PDF blueprint.
+
+    GET /api/v1/roadmap/export/?download=true
+    Download the roadmap as a PDF blueprint directly.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_roadmap_and_profile(self, user):
+        profile = StartupProfile.objects.filter(user=user).first()
+        if not profile:
+            raise ProfileNotFoundError()
+        try:
+            roadmap = services.get_roadmap_for_profile(profile)
+        except Exception:
+            raise ReportNotReadyError(detail="Roadmap is not ready yet. Please generate a roadmap first.")
+        return roadmap, profile
+
+    @extend_schema(
+        summary="Export roadmap blueprint as PDF via email",
+    )
+    def post(self, request, *args, **kwargs):
+        from django.conf import settings
+        from django.core.mail import EmailMessage
+        from .pdf import generate_roadmap_pdf
+
+        roadmap, profile = self._get_roadmap_and_profile(request.user)
+        recipient_email = request.data.get("email") or request.user.email
+
+        try:
+            pdf_bytes = generate_roadmap_pdf(roadmap, profile, request.user)
+        except Exception as exc:
+            logger.error("Failed to generate PDF for roadmap: %s", exc)
+            return Response(
+                {"detail": f"Failed to generate PDF blueprint: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        sector_label = profile.get_sector_display() if hasattr(profile, "get_sector_display") else profile.sector
+        startup_title = getattr(profile, "background_story", "") or "Startup Venture"
+        if len(startup_title) > 50:
+            startup_title = startup_title[:47] + "..."
+
+        subject = f"Your Start Pilot Roadmap Blueprint — {sector_label}"
+        body = (
+            f"Hi {request.user.full_name or 'Founder'},\n\n"
+            f"Attached is your complete Start Pilot Startup Roadmap Blueprint ({sector_label} sector).\n\n"
+            f"Venture: {startup_title}\n"
+            f"Timeline: {roadmap.total_weeks} weeks\n\n"
+            f"Review your milestones, execute with speed, and reach out to our AI Copilot or Mentors anytime.\n\n"
+            f"Best regards,\nThe Start Pilot Team"
+        )
+
+        try:
+            email = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[recipient_email],
+            )
+            clean_sector = "".join(c for c in str(sector_label) if c.isalnum() or c in ("-", "_"))
+            email.attach(
+                filename=f"StartPilot_Roadmap_{clean_sector}.pdf",
+                content=pdf_bytes,
+                mimetype="application/pdf",
+            )
+            email.send(fail_silently=False)
+            logger.info("Roadmap PDF emailed to %s", recipient_email)
+        except Exception as exc:
+            logger.warning("Email sending failed (%s). Continuing with direct PDF availability.", exc)
+            return Response(
+                {
+                    "detail": f"Email dispatch failed ({exc}), but your blueprint PDF was created successfully.",
+                    "email": recipient_email,
+                    "download_url": "/api/v1/roadmap/export/?download=true",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {
+                "detail": f"Roadmap PDF blueprint has been successfully sent to {recipient_email}.",
+                "email": recipient_email,
+                "download_url": "/api/v1/roadmap/export/?download=true",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Download roadmap blueprint directly as PDF",
+    )
+    def get(self, request, *args, **kwargs):
+        from django.http import HttpResponse
+        from .pdf import generate_roadmap_pdf
+
+        roadmap, profile = self._get_roadmap_and_profile(request.user)
+        pdf_bytes = generate_roadmap_pdf(roadmap, profile, request.user)
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        sector_label = profile.get_sector_display() if hasattr(profile, "get_sector_display") else profile.sector
+        clean_sector = "".join(c for c in str(sector_label) if c.isalnum() or c in ("-", "_"))
+        response["Content-Disposition"] = f'attachment; filename="StartPilot_Roadmap_{clean_sector}.pdf"'
+        return response

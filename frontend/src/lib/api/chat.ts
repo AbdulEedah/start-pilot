@@ -38,6 +38,7 @@ export interface SendMessageResponse {
   role?: string;
   content?: string;
   created_at?: string;
+  suggested_questions?: string[];
 }
 
 export interface PaginatedResponse<T> {

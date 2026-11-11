@@ -55,7 +55,53 @@ class RegisterView(APIView):
             email=serializer.validated_data["email"],
             password=serializer.validated_data["password"],
             full_name=serializer.validated_data["full_name"],
+            phone=serializer.validated_data.get("phone", ""),
         )
+
+        # Link any pending onboarding session and sync chat history & profile data
+        session_id = request.data.get("session_id", "").strip()
+        if session_id:
+            try:
+                from apps.profiles.models import OnboardingSession, StartupProfile
+                from apps.chat.models import Conversation, Message
+
+                onboarding_session = OnboardingSession.objects.filter(session_id=session_id).first()
+                if onboarding_session:
+                    onboarding_session.user = user
+                    onboarding_session.is_completed = True
+                    onboarding_session.save(update_fields=["user", "is_completed", "updated_at"])
+
+                    # Create or update StartupProfile
+                    fd = onboarding_session.form_data or {}
+                    skills_raw = fd.get("skills", "")
+                    skills_list = [s.strip() for s in skills_raw.split(",") if s.strip()] if isinstance(skills_raw, str) else list(skills_raw)
+
+                    profile, _ = StartupProfile.objects.get_or_create(
+                        user=user,
+                        defaults={
+                            "sector": onboarding_session.sector or "technology",
+                            "background_story": fd.get("story", ""),
+                            "problem": fd.get("problem", ""),
+                            "country": fd.get("country", ""),
+                            "state": fd.get("state", ""),
+                            "city": fd.get("city", ""),
+                            "existing_experience": fd.get("experience", ""),
+                            "key_skills": skills_list,
+                            "team_status": "solo",
+                            "time_commitment": "full",
+                        }
+                    )
+
+                    # Transfer all saved onboarding chat messages into a real Conversation
+                    if onboarding_session.chat_messages:
+                        conv, _ = Conversation.objects.get_or_create(user=user, profile=profile)
+                        for m in onboarding_session.chat_messages:
+                            m_role = m.get("role", "user")
+                            m_content = m.get("content", "").strip()
+                            if m_content and m_role in ["user", "assistant"]:
+                                Message.objects.create(conversation=conv, role=m_role, content=m_content)
+            except Exception as exc:
+                logger.warning("Could not associate onboarding session %s: %s", session_id, exc)
 
         # Auto-login: generate JWT tokens for the newly created user
         from rest_framework_simplejwt.tokens import RefreshToken

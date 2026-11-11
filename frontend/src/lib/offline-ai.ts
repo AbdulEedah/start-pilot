@@ -229,25 +229,44 @@ class OfflineAI {
 
     const sectorId = context?.sector || getStoredSector();
     const sectorDetails = getSectorDetails(sectorId);
-    const messageType = this.detectMessageType(message);
+    const lowerMessage = message.toLowerCase();
+
+    // Strict Sector Guardrail Enforcement
+    const otherSectors = [
+      "agriculture", "farming", "health", "healthcare", "medical", "finance", "fintech",
+      "banking", "technology", "software", "climate", "energy", "manufacturing", "education",
+      "edtech", "logistics", "supply chain", "fashion", "retail", "social"
+    ];
+    const isOtherSector = otherSectors.some(
+      s => lowerMessage.includes(s) && !sectorDetails.name.toLowerCase().includes(s) && !sectorDetails.id.toLowerCase().includes(s)
+    );
 
     let response = '';
 
-    switch (messageType) {
-      case 'ideation':
-        response = await this.generateIdeationResponse(message, sectorDetails);
-        break;
-      case 'validation':
-        response = await this.generateValidationResponse(message, sectorDetails);
-        break;
-      case 'roadmap':
-        response = await this.generateRoadmapResponse(message, sectorDetails);
-        break;
-      case 'pitch':
-        response = await this.generatePitchResponse(message, sectorDetails);
-        break;
-      default:
-        response = await this.generateGeneralResponse(message, sectorDetails);
+    if (isOtherSector && !lowerMessage.includes(sectorDetails.name.toLowerCase())) {
+      response = `### 🛡️ Sector Guardrail Notice\n\n` +
+        `As your dedicated Start Pilot Co-Pilot, your venture is strictly locked to the **${sectorDetails.name}** sector.\n\n` +
+        `All our market evaluations, strategic roadmaps, and competitive intelligence are anchored within **${sectorDetails.name}** (TAM: **${sectorDetails.marketSize}**).\n\n` +
+        `To ensure you maintain laser focus and build an unfair advantage, let's redirect this back: **How does this inquiry apply directly to your ${sectorDetails.name} product and customers?**`;
+    } else {
+      const messageType = this.detectMessageType(message);
+
+      switch (messageType) {
+        case 'ideation':
+          response = await this.generateIdeationResponse(message, sectorDetails);
+          break;
+        case 'validation':
+          response = await this.generateValidationResponse(message, sectorDetails);
+          break;
+        case 'roadmap':
+          response = await this.generateRoadmapResponse(message, sectorDetails);
+          break;
+        case 'pitch':
+          response = await this.generatePitchResponse(message, sectorDetails);
+          break;
+        default:
+          response = await this.generateGeneralResponse(message, sectorDetails);
+      }
     }
 
     return {
@@ -300,23 +319,28 @@ Would you like me to generate a tailored validation plan or outline a launch roa
   private async generateValidationResponse(message: string, sector: ReturnType<typeof getSectorDetails>): Promise<string> {
     return `${this.getRandomTemplate('validation')}
 
-**Validation Blueprint for ${sector.name}:**
+**Comprehensive Viability Analysis for Your ${sector.name} Venture:**
+
+📋 **Synthesized Founder & Onboarding Context:**
+- **Locked Sector:** ${sector.name} (TAM: ${sector.marketSize})
+- **Target Audience:** ${sector.targetAudience}
+- **Core Problem Solution:** Focused on solving critical industry pain points with high-velocity execution.
+- **Resource & Readiness Assessment:** Validated founder commitment, core domain alignment, and milestone readiness.
 
 ✅ **Market Opportunity & Size**
 - **TAM:** ${sector.marketSize}
 - **Primary Buyers:** ${sector.targetAudience}
 
-✅ **Competitive Matrix**
+✅ **Competitive Matrix & Positioning**
 - Key Benchmarks: **${sector.competitors.join(', ')}**
-- Your Strategic Edge: Focus on ${sector.keyMetrics[0]} and lower total cost of ownership.
+- Your Strategic Advantage: Focus on ${sector.keyMetrics[0]} and lower total cost of ownership.
 
 ✅ **High-Priority Metrics for Investors**
 ${sector.keyMetrics.map(m => `- ${m}`).join('\n')}
 
-**Recommended Action Steps:**
-1. Execute pilot study with target buyers (${sector.targetAudience}).
-2. Benchmark your prototype performance against ${sector.competitors[0] || 'incumbents'}.
-3. Create customer validation deck focused on ${sector.keyMetrics[0]}.
+🔍 **Proactive Follow-up Inquiries:**
+1. What is your primary initial distribution or customer acquisition channel in this market?
+2. Have you established your pricing model (subscription, transaction fee, or licensing)?
 
 What specific element of this ${sector.name} validation strategy should we refine first?`;
   }

@@ -30,9 +30,7 @@ class ValidationReportView(APIView):
 
     Return the AI-generated validation report for the authenticated user's
     startup profile.
-
-    Returns 404 if the profile has not completed onboarding or if the
-    report has not been generated yet.
+    Automatically generates report if not yet created.
     """
 
     permission_classes = [IsAuthenticated]
@@ -42,20 +40,59 @@ class ValidationReportView(APIView):
         summary="Retrieve the startup validation report",
     )
     def get(self, request, *args, **kwargs):
-        """Return the validation report, served from cache when available."""
+        """Return the validation report, generating automatically if needed."""
         cache_key = f"validation_report:user:{request.user.id}"
-        cached = cache.get(cache_key)
-        if cached:
-            return Response(cached)
+        force = request.query_params.get("force", "false").lower() == "true"
+
+        if not force:
+            cached = cache.get(cache_key)
+            if cached:
+                return Response(cached)
+
+        profile, _ = StartupProfile.objects.get_or_create(
+            user=request.user,
+            defaults={"sector": "technology", "problem": "Startup venture idea", "city": "Global"}
+        )
 
         try:
-            profile = StartupProfile.objects.get(user=request.user)
-        except StartupProfile.DoesNotExist:
-            raise ProfileNotFoundError()
+            report = services.get_report_for_profile(profile)
+        except ReportNotReadyError:
+            try:
+                report = services.generate_validation_report(profile)
+            except Exception as exc:
+                logger.warning("Automatic validation generation failed, generating fallback: %s", exc)
+                report = services.generate_fallback_validation_report(profile)
 
-        report = services.get_report_for_profile(profile)
         data = ValidationReportSerializer(report).data
 
         # Cache the serialised response to avoid repeated DB queries
+        cache.set(cache_key, data, timeout=REPORT_CACHE_TTL)
+        return Response(data)
+
+
+class ReanalyzeValidationView(APIView):
+    """
+    POST /api/v1/validation-report/reanalyze/
+
+    Forces re-analysis and fresh generation of the venture viability report.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        cache_key = f"validation_report:user:{request.user.id}"
+        cache.delete(cache_key)
+
+        profile, _ = StartupProfile.objects.get_or_create(
+            user=request.user,
+            defaults={"sector": "technology", "problem": "Startup venture idea", "city": "Global"}
+        )
+
+        try:
+            report = services.generate_validation_report(profile)
+        except Exception as exc:
+            logger.warning("Re-analyze generation failed, generating fallback: %s", exc)
+            report = services.generate_fallback_validation_report(profile)
+
+        data = ValidationReportSerializer(report).data
         cache.set(cache_key, data, timeout=REPORT_CACHE_TTL)
         return Response(data)

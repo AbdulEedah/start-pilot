@@ -35,7 +35,7 @@ def _get_tokens_for_user(user: User) -> dict:
 
 
 @transaction.atomic
-def register_user(email: str, password: str, full_name: str) -> User:
+def register_user(email: str, password: str, full_name: str, phone: str = "") -> User:
     """
     Create a new user account and trigger a welcome email via Celery.
 
@@ -43,11 +43,12 @@ def register_user(email: str, password: str, full_name: str) -> User:
         email:     User's email address (already validated and normalised).
         password:  Plaintext password (will be hashed by create_user).
         full_name: User's display name.
+        phone:     User's contact phone number.
 
     Returns:
         Newly created User instance.
     """
-    user = User.objects.create_user(email=email, password=password, full_name=full_name)
+    user = User.objects.create_user(email=email, password=password, full_name=full_name, phone=phone)
     logger.info("New user registered: %s", mask_email(email))
 
     # Dispatch welcome email asynchronously after commit so it never blocks registration

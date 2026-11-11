@@ -67,4 +67,11 @@ export const roadmapsApi = {
    */
   updateTask: (taskId: number, data: TaskUpdatePayload) =>
     apiClient.patch<RoadmapTask>(`/api/v1/roadmap/tasks/${taskId}/`, data),
+
+  /**
+   * Export the roadmap blueprint as a PDF sent to founder's email.
+   * POST /api/v1/roadmap/export/
+   */
+  exportRoadmap: (email?: string) =>
+    apiClient.post<{ detail: string; email: string; download_url?: string }>("/api/v1/roadmap/export/", { email }),
 };

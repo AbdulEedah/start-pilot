@@ -19,7 +19,22 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [conversationId, setConversationId] = useState<number | null>(null)
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([
+    `Analyze the viability of my ${sectorDetails.name} venture based on my onboarding details.`,
+    `What critical assumptions must I validate first in ${sectorDetails.name}?`,
+    `What missing information do you need from me to evaluate my business model?`,
+    `How do I run customer discovery interviews for this ${sectorDetails.name} problem?`,
+  ])
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setSuggestedQuestions([
+      `Analyze the viability of my ${sectorDetails.name} venture based on my onboarding details.`,
+      `What critical assumptions must I validate first in ${sectorDetails.name}?`,
+      `What missing information do you need from me to evaluate my business model?`,
+      `How do I run customer discovery interviews for this ${sectorDetails.name} problem?`,
+    ])
+  }, [sectorDetails.name])
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -95,6 +110,37 @@ export default function ChatPage() {
       }
 
       setMessages([...updatedMessages, aiMessage])
+
+      if (Array.isArray(response.suggested_questions) && response.suggested_questions.length > 0) {
+        setSuggestedQuestions(response.suggested_questions)
+      } else {
+        const msgLower = textToSend.toLowerCase()
+        if (msgLower.includes("viability") || msgLower.includes("validate") || msgLower.includes("potential") || msgLower.includes("score")) {
+          setSuggestedQuestions([
+            `What are the top 3 regulatory or market risks for ${sectorDetails.name}?`,
+            `What MVP features are essential to test demand before building full scale?`,
+            `What specific questions do you need answered about my target customer?`,
+          ])
+        } else if (msgLower.includes("mvp") || msgLower.includes("product") || msgLower.includes("build") || msgLower.includes("feature")) {
+          setSuggestedQuestions([
+            `How do I acquire my first 50 early adopters in ${sectorDetails.name}?`,
+            `What monetization model fits this ${sectorDetails.name} solution best?`,
+            `Which key metrics should I track during beta testing?`,
+          ])
+        } else if (msgLower.includes("pitch") || msgLower.includes("deck") || msgLower.includes("investor") || msgLower.includes("raise")) {
+          setSuggestedQuestions([
+            `What metrics do angel investors look for in ${sectorDetails.name} startups?`,
+            `How do I define my startup's unfair advantage or competitive moat?`,
+            `Help me craft a 60-second elevator pitch for ${sectorDetails.name} investors.`,
+          ])
+        } else {
+          setSuggestedQuestions([
+            `What is the recommended next milestone on my ${sectorDetails.name} roadmap?`,
+            `What missing information do you need from me to evaluate my execution?`,
+            `How do I calculate customer acquisition cost (CAC) for ${sectorDetails.name}?`,
+          ])
+        }
+      }
     } catch (error) {
       console.error('Failed to get AI response:', error)
       toast.error("Failed to get AI response", {
@@ -109,7 +155,10 @@ export default function ChatPage() {
 
   const handleAnalyzeViability = async () => {
     if (isTyping) return
-    await sendMessageText(`Please evaluate the viability and market potential for my ${sectorDetails.name} venture.`)
+    await sendMessageText(
+      `Please analyze the viability of my ${sectorDetails.name} venture based on my complete onboarding background, problem statement, location, team, and resources. ` +
+      `Evaluate our problem-solution fit and market potential, and if you need any additional information to give an accurate assessment, please ask me directly.`
+    )
   }
 
   return (
@@ -228,18 +277,18 @@ export default function ChatPage() {
         </AnimatePresence>
       </div>
 
-      {/* Sector Quick Prompts */}
+      {/* Dynamic Sector & Stage Suggested Questions */}
       <div className="px-6 pt-2 pb-2 bg-card/10 border-t border-border/30">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-primary" /> Suggested {sectorDetails.name} Prompts:
+          <Sparkles className="w-3 h-3 text-primary" /> Suggested {sectorDetails.name} Inquiries (Stage & Chat Adaptive):
         </p>
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
-          {sectorDetails.quickPrompts.map((promptText, idx) => (
+          {suggestedQuestions.map((promptText, idx) => (
             <button
               key={idx}
               onClick={() => sendMessageText(promptText)}
               disabled={isTyping}
-              className="text-xs px-3 py-1.5 rounded-full bg-accent/60 hover:bg-primary/20 hover:text-primary border border-border/40 transition-all shrink-0 flex items-center gap-1"
+              className="text-xs px-3.5 py-1.5 rounded-full bg-accent/60 hover:bg-primary/20 hover:text-primary border border-border/40 transition-all shrink-0 flex items-center gap-1.5 font-medium"
             >
               <span>{promptText}</span>
               <ArrowUpRight className="w-3 h-3 opacity-60" />

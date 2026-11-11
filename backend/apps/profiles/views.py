@@ -12,19 +12,79 @@ import logging
 
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.exceptions import OnboardingNotCompleteError
 
 from . import services
+from .models import OnboardingSession, StartupProfile
 from .serializers import (
     StartupProfileSerializer,
     StartupProfileStatusSerializer,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class OnboardingSessionView(APIView):
+    """
+    POST /api/v1/profile/onboarding-session/
+    GET  /api/v1/profile/onboarding-session/
+
+    Allows unauthenticated visitors to save all onboarding chat messages,
+    sector selection, and venture background data in the database
+    before proceeding to create an account or register.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        session_id = request.data.get("session_id", "").strip()
+        if not session_id:
+            import uuid
+            session_id = str(uuid.uuid4())
+
+        sector = request.data.get("sector", "technology").strip() or "technology"
+        form_data = request.data.get("form_data", {})
+        chat_messages = request.data.get("chat_messages", [])
+
+        user = request.user if request.user.is_authenticated else None
+
+        session, created = OnboardingSession.objects.update_or_create(
+            session_id=session_id,
+            defaults={
+                "sector": sector,
+                "form_data": form_data,
+                "chat_messages": chat_messages,
+                "user": user,
+            }
+        )
+
+        return Response({
+            "status": "saved",
+            "session_id": session.session_id,
+            "sector": session.sector,
+            "messages_count": len(session.chat_messages),
+            "created": created,
+        }, status=status.HTTP_200_OK)
+
+    def get(self, request, *args, **kwargs):
+        session_id = request.query_params.get("session_id", "").strip()
+        if not session_id:
+            return Response({"detail": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            session = OnboardingSession.objects.get(session_id=session_id)
+            return Response({
+                "session_id": session.session_id,
+                "sector": session.sector,
+                "form_data": session.form_data,
+                "chat_messages": session.chat_messages,
+                "is_completed": session.is_completed,
+            })
+        except OnboardingSession.DoesNotExist:
+            return Response({"detail": "Onboarding session not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class StartupProfileView(APIView):

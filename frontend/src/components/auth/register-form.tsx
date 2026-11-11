@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form"
 import { useRouter } from "next/navigation"
 import * as z from "zod"
 import { toast } from "sonner"
-import { User, Mail, Lock, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react"
+import { User, Mail, Phone, Lock, Loader2, CheckCircle2, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -21,10 +21,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/components/auth-provider"
+import { getPendingOnboarding } from "@/lib/onboarding-storage"
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(7, "Phone number is required (at least 7 digits)"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
   agreeToTerms: z.boolean().refine((val) => val === true, {
@@ -48,6 +50,7 @@ export function RegisterForm() {
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
       confirmPassword: "",
       agreeToTerms: false,
@@ -58,7 +61,9 @@ export function RegisterForm() {
     setIsLoading(true)
 
     try {
-      await register(values.email, values.password, values.name)
+      const pending = getPendingOnboarding()
+      const sessionId = pending?.session_id
+      await register(values.email, values.password, values.name, values.phone, sessionId)
       toast.success("Account created!", {
         description: "Welcome to StartPilot. Let's get started!",
       })
@@ -155,6 +160,23 @@ export function RegisterForm() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="name@example.com" className="pl-9" {...field} />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number *</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="+1 (555) 000-0000" className="pl-9" {...field} />
                 </div>
               </FormControl>
               <FormMessage />
@@ -263,6 +285,18 @@ export function RegisterForm() {
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Create Account
         </Button>
+
+        <div className="pt-2 text-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/onboarding")}
+            className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Onboarding Details
+          </Button>
+        </div>
       </form>
     </Form>
   )

@@ -27,6 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id",
             "email",
             "full_name",
+            "phone",
             "avatar",
             "role",
             "is_email_verified",
@@ -43,6 +44,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     Validates password strength, uniqueness of email, and creates the user.
     """
 
+    phone = serializers.CharField(required=False, allow_blank=True, default="", max_length=50)
     password = serializers.CharField(write_only=True, min_length=8, style={"input_type": "password"})
     password_confirm = serializers.CharField(
         write_only=True, style={"input_type": "password"}, label="Confirm password"
@@ -50,7 +52,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["email", "full_name", "password", "password_confirm"]
+        fields = ["email", "full_name", "phone", "password", "password_confirm"]
 
     def validate_email(self, value: str) -> str:
         """Ensure email is not already registered."""
@@ -76,6 +78,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data["email"],
             password=validated_data["password"],
             full_name=validated_data["full_name"],
+            phone=validated_data.get("phone", ""),
         )
 
 

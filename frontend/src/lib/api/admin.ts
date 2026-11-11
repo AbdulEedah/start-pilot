@@ -295,6 +295,7 @@ export interface PublicMentor {
   contact_email: string;
   linkedin_url?: string;
   calendly_url?: string;
+  phone?: string;
 }
 
 export interface PublicMentorsResponse {

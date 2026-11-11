@@ -169,6 +169,19 @@ export function LoginForm() {
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Sign In
           </Button>
+
+          <div className="pt-4 text-center border-t border-border/50">
+            <p className="text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={() => router.push("/?builder=select")}
+                className="font-bold text-primary hover:underline ml-1 cursor-pointer"
+              >
+                Proceed to register
+              </button>
+            </p>
+          </div>
         </form>
       </Form>
     </div>

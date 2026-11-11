@@ -100,3 +100,36 @@ class TestRoadmapTaskUpdateView:
             format="json",
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+class TestRoadmapExportView:
+    """Tests for POST and GET /api/v1/roadmap/export/."""
+
+    def test_export_email_success(self):
+        user = UserFactory(email="founder@startpilot.io", full_name="Alex Founder")
+        profile = CompletedProfileFactory(user=user)
+        roadmap = RoadmapFactory(profile=profile)
+        cat = RoadmapCategoryFactory(roadmap=roadmap, name="Product")
+        RoadmapTaskFactory(category=cat, title="Launch Beta")
+
+        client = make_auth_client(user)
+        with patch("django.core.mail.EmailMessage.send", return_value=1) as mock_send:
+            response = client.post(reverse("roadmaps:roadmap-export"), {}, format="json")
+            assert response.status_code == status.HTTP_200_OK
+            assert "successfully sent" in response.data["detail"]
+            assert response.data["email"] == "founder@startpilot.io"
+            mock_send.assert_called_once()
+
+    def test_export_download_pdf(self):
+        user = UserFactory()
+        profile = CompletedProfileFactory(user=user)
+        roadmap = RoadmapFactory(profile=profile)
+        cat = RoadmapCategoryFactory(roadmap=roadmap, name="Product")
+        RoadmapTaskFactory(category=cat, title="Launch Beta")
+
+        client = make_auth_client(user)
+        response = client.get(reverse("roadmaps:roadmap-export") + "?download=true")
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF")

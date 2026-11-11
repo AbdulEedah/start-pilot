@@ -95,7 +95,13 @@ class SendMessageView(APIView):
         )
 
         message_data = MessageSerializer(assistant_message).data
-        return Response({**message_data, 'message': message_data, 'conversation_id': conversation.id}, status=status.HTTP_200_OK)
+        suggested_questions = getattr(assistant_message, "suggested_questions", [])
+        return Response({
+            **message_data,
+            'message': message_data,
+            'conversation_id': conversation.id,
+            'suggested_questions': suggested_questions,
+        }, status=status.HTTP_200_OK)
 
 
 class MessageListView(APIView):

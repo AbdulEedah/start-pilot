@@ -821,6 +821,7 @@ class PublicMentorsView(APIView):
                 "contact_email": m.contact_email,
                 "linkedin_url": m.linkedin_url,
                 "calendly_url": m.calendly_url,
+                "phone": m.phone,
             }
             for m in queryset
         ]

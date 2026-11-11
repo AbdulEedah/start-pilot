@@ -67,7 +67,20 @@ export function EntryDialog({ isOpen, onOpenChange }: EntryDialogProps) {
           </button>
         </div>
 
-        <div className="bg-muted/30 p-6 border-t border-border/50 text-center">
+        <div className="bg-muted/30 p-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <p className="text-xs text-muted-foreground">
+            Already have an account?{" "}
+            <button
+              type="button"
+              onClick={() => {
+                onOpenChange(false)
+                router.push("/login")
+              }}
+              className="font-bold text-primary hover:underline ml-1 cursor-pointer"
+            >
+              Log in directly
+            </button>
+          </p>
           <p className="text-xs text-muted-foreground">
             Not sure? <Button variant="link" className="h-auto p-0 text-xs">Speak with an advisor</Button>
           </p>

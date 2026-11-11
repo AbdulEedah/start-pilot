@@ -33,20 +33,21 @@ interface BackgroundFormProps {
   onBack: () => void
   onSubmit: (data: z.infer<typeof backgroundSchema>) => void
   isSubmitting?: boolean
+  initialValues?: Partial<z.infer<typeof backgroundSchema>>
 }
 
-export function BackgroundForm({ onBack, onSubmit, isSubmitting = false }: BackgroundFormProps) {
+export function BackgroundForm({ onBack, onSubmit, isSubmitting = false, initialValues }: BackgroundFormProps) {
   const form = useForm<z.infer<typeof backgroundSchema>>({
     resolver: zodResolver(backgroundSchema),
     defaultValues: {
-      story: "",
-      problem: "",
-      country: "",
-      state: "",
-      city: "",
-      experience: "",
-      skills: "",
-      resources: "",
+      story: initialValues?.story || "",
+      problem: initialValues?.problem || "",
+      country: initialValues?.country || "",
+      state: initialValues?.state || "",
+      city: initialValues?.city || "",
+      experience: initialValues?.experience || "",
+      skills: initialValues?.skills || "",
+      resources: initialValues?.resources || "",
     },
   })
 
