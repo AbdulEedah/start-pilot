@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { 
   ShieldCheck, 
   Users, 
@@ -15,13 +15,15 @@ import {
   ExternalLink,
   ShieldAlert,
   ArrowLeft,
-  GraduationCap
+  GraduationCap,
+  Database
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
+import { getDjangoAdminUrl } from "@/lib/api"
 
 export default function AdminLayout({
   children,
@@ -32,6 +34,16 @@ export default function AdminLayout({
   const router = useRouter()
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [djangoAdminUrl, setDjangoAdminUrl] = useState("https://startpilot-backend.onrender.com/admin/")
+  const [isProductionEnv, setIsProductionEnv] = useState(true)
+
+  useEffect(() => {
+    setDjangoAdminUrl(getDjangoAdminUrl())
+    if (typeof window !== "undefined") {
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      setIsProductionEnv(!isLocal)
+    }
+  }, [])
 
   const isStaffOrAdmin =
     Boolean(user?.is_staff) ||
@@ -157,6 +169,17 @@ export default function AdminLayout({
 
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <ThemeToggle />
+            <a
+              href={djangoAdminUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 transition-colors"
+              title={isProductionEnv ? "Open Online Database (Django Admin)" : "Open Local Django Admin Site"}
+            >
+              <Database className="w-3.5 h-3.5 text-primary" />
+              <span>{isProductionEnv ? "Online DB" : "Django DB"}</span>
+              <ExternalLink className="w-3 h-3 opacity-70" />
+            </a>
             <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary">
               <LogOut className="w-4 h-4" />
               Exit Admin
@@ -220,14 +243,15 @@ export default function AdminLayout({
           <div className="flex items-center justify-between px-1">
             <ThemeToggle />
             <a
-              href="http://localhost:8000/admin/"
+              href={djangoAdminUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-semibold text-muted-foreground hover:text-primary flex items-center gap-1"
-              title="Open Django Admin Site"
+              className="text-xs font-semibold text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"
+              title={isProductionEnv ? "Open Online Database (Django Admin)" : "Open Local Django Admin Site"}
             >
-              <span>Django DB</span>
-              <ExternalLink className="w-3 h-3" />
+              <Database className="w-3.5 h-3.5 text-primary" />
+              <span>{isProductionEnv ? "Online DB" : "Django DB"}</span>
+              <ExternalLink className="w-3 h-3 opacity-70" />
             </a>
             <Link href="/dashboard" className="p-2 text-slate-400 hover:text-primary transition-colors" title="Exit to Founder Dashboard">
               <LogOut className="w-4 h-4" />

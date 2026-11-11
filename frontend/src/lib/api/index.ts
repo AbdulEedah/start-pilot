@@ -61,5 +61,5 @@ export type {
   AdminSettingsResponse,
 } from "./admin";
 
-export { apiClient, ApiError } from "@/lib/api-client";
+export { apiClient, ApiError, getDjangoAdminUrl } from "@/lib/api-client";
 export type { TokenPair } from "@/lib/api-client";

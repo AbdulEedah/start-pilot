@@ -12,6 +12,34 @@ if (rawBaseUrl && !rawBaseUrl.startsWith("http://") && !rawBaseUrl.startsWith("h
 // Clean trailing slashes and /api suffix so paths starting with /api/v1 work seamlessly
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 
+/**
+ * Resolves the URL for the Django Admin / Online Database manager.
+ * In production, it targets the deployed online backend (e.g. on Render) or
+ * NEXT_PUBLIC_DJANGO_ADMIN_URL / NEXT_PUBLIC_API_URL, and falls back to
+ * http://localhost:8000/admin/ only during local development.
+ */
+export function getDjangoAdminUrl(): string {
+  if (process.env.NEXT_PUBLIC_DJANGO_ADMIN_URL) {
+    return process.env.NEXT_PUBLIC_DJANGO_ADMIN_URL.trim();
+  }
+
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    const formatted = envUrl.startsWith("http") ? envUrl : `https://${envUrl}`;
+    const clean = formatted.replace(/\/+$/, "").replace(/\/api\/v1$/, "").replace(/\/api$/, "");
+    return `${clean}/admin/`;
+  }
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return "https://startpilot-backend.onrender.com/admin/";
+    }
+  }
+
+  return "http://localhost:8000/admin/";
+}
+
 interface TokenPair {
   access: string;
   refresh: string;

@@ -15,13 +15,14 @@ import {
   Server,
   Cpu,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { adminApi, type AdminSettingsResponse } from "@/lib/api"
+import { adminApi, getDjangoAdminUrl, type AdminSettingsResponse } from "@/lib/api"
 import { toast } from "sonner"
 
 const DEFAULT_SETTINGS: AdminSettingsResponse = {
@@ -54,6 +55,8 @@ export default function AdminSettingsPage() {
   const [enforceMfa, setEnforceMfa] = useState(true)
   const [rateLimiting, setRateLimiting] = useState(true)
   const [sessionTimeout, setSessionTimeout] = useState(2)
+  const [djangoAdminUrl, setDjangoAdminUrl] = useState("https://startpilot-backend.onrender.com/admin/")
+  const [isProduction, setIsProduction] = useState(true)
 
   const fetchSettings = async () => {
     try {
@@ -77,6 +80,11 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     fetchSettings()
+    setDjangoAdminUrl(getDjangoAdminUrl())
+    if (typeof window !== "undefined") {
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      setIsProduction(!isLocal)
+    }
   }, [])
 
   const handleSave = async () => {
@@ -280,7 +288,14 @@ export default function AdminSettingsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { label: "Database Layer", value: data.system.database, icon: Database, status: "Healthy" },
+                  { 
+                    label: "Database Layer", 
+                    value: isProduction ? "Online PostgreSQL (Production)" : data.system.database, 
+                    icon: Database, 
+                    status: "Healthy",
+                    actionUrl: djangoAdminUrl,
+                    actionLabel: isProduction ? "Open Online DB" : "Open Local DB"
+                  },
                   { label: "AI Model Provider", value: data.system.ai_engine, icon: Cpu, status: "Online" },
                   { label: "Background Tasks", value: data.system.celery, icon: Zap, status: "Ready" },
                   { label: "Core API Version", value: data.system.api_version, icon: CheckCircle2, status: "Current" },
@@ -295,7 +310,20 @@ export default function AdminSettingsPage() {
                         {item.status}
                       </span>
                     </div>
-                    <p className="font-bold text-sm text-foreground">{item.value}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-sm text-foreground truncate">{item.value}</p>
+                      {"actionUrl" in item && (
+                        <a
+                          href={(item as any).actionUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                        >
+                          <span>{(item as any).actionLabel}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -310,7 +338,7 @@ export default function AdminSettingsPage() {
                     Django REST Framework
                   </span>
                   <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                    SQLite Database
+                    {isProduction ? "Online PostgreSQL (Render)" : "SQLite Database (Local Dev)"}
                   </span>
                 </div>
               </div>
